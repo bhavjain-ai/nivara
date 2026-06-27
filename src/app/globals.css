@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-bg: #1e3a5f;
+  --sidebar-hover: #2a4f80;
+  --critical: #dc2626;
+  --warning: #d97706;
+  --stable: #16a34a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
