@@ -1,6 +1,5 @@
 'use client';
 
-import { use } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { VitalsCards } from '@/components/patient/VitalsCards';
@@ -14,7 +13,7 @@ import { MapPin, Phone, Calendar, User, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 const conditionColors: Record<string, string> = {
@@ -31,7 +30,7 @@ function statusLabel(s: AlertStatus): string {
 }
 
 export default function PatientDetailPage({ params }: PageProps) {
-  const { id } = use(params);
+  const { id } = params;
   const patient = getPatientById(id);
 
   if (!patient) {
