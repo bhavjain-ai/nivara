@@ -72,7 +72,7 @@ export function PatientTable({ patients }: PatientTableProps) {
         </thead>
         <tbody className="divide-y divide-gray-50">
           {patients.map((p) => (
-            <tr key={p.id} className="hover:bg-gray-50 transition-colors group">
+            <tr key={p.id} className="hover:bg-gray-50 transition-colors group cursor-pointer" onClick={() => window.location.href = `/dashboard/patient/${p.id}`}>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#1e3a5f]/10 flex items-center justify-center text-[#1e3a5f] font-semibold text-sm flex-shrink-0">

@@ -1,6 +1,5 @@
 'use client';
 
-import { notFound } from 'next/navigation';
 import { use } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
@@ -36,7 +35,14 @@ export default function PatientDetailPage({ params }: PageProps) {
   const patient = getPatientById(id);
 
   if (!patient) {
-    notFound();
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Patient not found</h2>
+          <Link href="/dashboard" className="text-[#1e3a5f] underline">Back to Dashboard</Link>
+        </div>
+      </div>
+    );
   }
 
   return (
