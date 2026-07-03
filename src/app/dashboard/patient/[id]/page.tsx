@@ -6,6 +6,7 @@ import { VitalsCards } from '@/components/patient/VitalsCards';
 import { VitalsChart } from '@/components/patient/VitalsChart';
 import { AIInsights } from '@/components/patient/AIInsights';
 import { AlertHistory } from '@/components/patient/AlertHistory';
+import { MedicationPanel } from '@/components/patient/MedicationPanel';
 import { Badge } from '@/components/ui/Badge';
 import { getPatientById } from '@/lib/mock-data';
 import { AlertStatus } from '@/types';
@@ -117,6 +118,14 @@ export default function PatientDetailPage({ params }: PageProps) {
               Latest Vitals
             </h2>
             <VitalsCards patient={patient} />
+          </section>
+
+          {/* Medication Regimen & Escalation */}
+          <section>
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Medications &amp; IGH V Escalation
+            </h2>
+            <MedicationPanel patient={patient} />
           </section>
 
           {/* Vitals Charts */}

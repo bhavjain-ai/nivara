@@ -27,6 +27,12 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-98201-11234',
     physicianName: 'Dr. Anita Desai',
     enrollmentDate: '2024-01-15',
+    treatmentStep: 2,
+    medications: [
+      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB' as const, dose: '40 mg', frequency: 'Once daily', startDate: '2024-01-15' },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-01-15' },
+      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic' as const, dose: '12.5 mg', frequency: 'Once daily', startDate: '2024-03-01' },
+    ],
     lastReadingTime: minutesAgo(12),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -59,6 +65,11 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-94440-22345',
     physicianName: 'Dr. Anita Desai',
     enrollmentDate: '2024-02-10',
+    treatmentStep: 1,
+    medications: [
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-02-10' },
+      { name: 'Indapamide', genericName: 'Indapamide', drugClass: 'Diuretic' as const, dose: '1.5 mg', frequency: 'Once daily', startDate: '2024-02-10' },
+    ],
     lastReadingTime: minutesAgo(35),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -91,6 +102,11 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-99000-33456',
     physicianName: 'Dr. Vikram Nair',
     enrollmentDate: '2023-11-20',
+    treatmentStep: 1,
+    medications: [
+      { name: 'Ramipril', genericName: 'Ramipril', drugClass: 'ACE' as const, dose: '2.5 mg', frequency: 'Once daily', startDate: '2024-03-05' },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-03-05' },
+    ],
     lastReadingTime: minutesAgo(90),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -114,6 +130,12 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-98110-44567',
     physicianName: 'Dr. Anita Desai',
     enrollmentDate: '2024-03-05',
+    treatmentStep: 2,
+    medications: [
+      { name: 'Losartan', genericName: 'Losartan', drugClass: 'ARB' as const, dose: '50 mg', frequency: 'Once daily', startDate: '2024-01-20' },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-01-20' },
+      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic' as const, dose: '12.5 mg', frequency: 'Once daily', startDate: '2024-02-15' },
+    ],
     lastReadingTime: minutesAgo(8),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -145,6 +167,12 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-98250-55678',
     physicianName: 'Dr. Vikram Nair',
     enrollmentDate: '2024-01-28',
+    treatmentStep: 3,
+    medications: [
+      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB' as const, dose: '80 mg', frequency: 'Once daily', startDate: '2023-11-10' },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '10 mg', frequency: 'Once daily', startDate: '2023-11-10' },
+      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic' as const, dose: '25 mg', frequency: 'Once daily', startDate: '2023-12-01' },
+    ],
     lastReadingTime: minutesAgo(45),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -176,6 +204,11 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-99800-66789',
     physicianName: 'Dr. Anita Desai',
     enrollmentDate: '2024-04-12',
+    treatmentStep: 1,
+    medications: [
+      { name: 'Perindopril', genericName: 'Perindopril', drugClass: 'ACE' as const, dose: '4 mg', frequency: 'Once daily', startDate: '2024-04-01' },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-04-01' },
+    ],
     lastReadingTime: minutesAgo(120),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -209,6 +242,11 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-98490-77890',
     physicianName: 'Dr. Sunita Rao',
     enrollmentDate: '2023-12-01',
+    treatmentStep: 1,
+    medications: [
+      { name: 'Metformin', genericName: 'Metformin', drugClass: 'Other' as const, dose: '500 mg', frequency: 'Twice daily', startDate: '2023-08-15' },
+      { name: 'Glimepiride', genericName: 'Glimepiride', drugClass: 'Other' as const, dose: '1 mg', frequency: 'Once daily', startDate: '2023-08-15' },
+    ],
     lastReadingTime: minutesAgo(20),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -242,6 +280,12 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-94890-88901',
     physicianName: 'Dr. Sunita Rao',
     enrollmentDate: '2024-02-20',
+    treatmentStep: 1,
+    medications: [
+      { name: 'Metformin', genericName: 'Metformin', drugClass: 'Other' as const, dose: '1000 mg', frequency: 'Twice daily', startDate: '2023-10-20' },
+      { name: 'Sitagliptin', genericName: 'Sitagliptin', drugClass: 'Other' as const, dose: '100 mg', frequency: 'Once daily', startDate: '2024-01-10' },
+      { name: 'Ramipril', genericName: 'Ramipril', drugClass: 'ACE' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-01-10' },
+    ],
     lastReadingTime: minutesAgo(60),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -275,6 +319,11 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-98100-99012',
     physicianName: 'Dr. Vikram Nair',
     enrollmentDate: '2023-10-15',
+    treatmentStep: 1,
+    medications: [
+      { name: 'Insulin Glargine', genericName: 'Insulin Glargine', drugClass: 'Other' as const, dose: '20 units', frequency: 'Once daily (bedtime)', startDate: '2024-02-01' },
+      { name: 'Metformin', genericName: 'Metformin', drugClass: 'Other' as const, dose: '500 mg', frequency: 'Twice daily', startDate: '2024-02-01' },
+    ],
     lastReadingTime: minutesAgo(180),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -299,6 +348,12 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-80000-10123',
     physicianName: 'Dr. Sunita Rao',
     enrollmentDate: '2023-09-01',
+    treatmentStep: 2,
+    medications: [
+      { name: 'Ramipril', genericName: 'Ramipril', drugClass: 'ACE' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2023-12-01' },
+      { name: 'Bisoprolol', genericName: 'Bisoprolol', drugClass: 'BetaBlocker' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2023-12-01' },
+      { name: 'Furosemide', genericName: 'Furosemide', drugClass: 'Diuretic' as const, dose: '40 mg', frequency: 'Once daily', startDate: '2023-12-01' },
+    ],
     lastReadingTime: minutesAgo(15),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -341,6 +396,12 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-98300-11234',
     physicianName: 'Dr. Vikram Nair',
     enrollmentDate: '2024-01-10',
+    treatmentStep: 3,
+    medications: [
+      { name: 'Sacubitril/Valsartan', genericName: 'Sacubitril/Valsartan', drugClass: 'ARNI' as const, dose: '50 mg', frequency: 'Twice daily', startDate: '2023-09-15' },
+      { name: 'Carvedilol', genericName: 'Carvedilol', drugClass: 'BetaBlocker' as const, dose: '12.5 mg', frequency: 'Twice daily', startDate: '2023-09-15' },
+      { name: 'Spironolactone', genericName: 'Spironolactone', drugClass: 'MRA' as const, dose: '25 mg', frequency: 'Once daily', startDate: '2024-01-01' },
+    ],
     lastReadingTime: minutesAgo(40),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),
@@ -373,6 +434,12 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     phoneNumber: '+91-94470-22345',
     physicianName: 'Dr. Anita Desai',
     enrollmentDate: '2024-03-22',
+    treatmentStep: 2,
+    medications: [
+      { name: 'Enalapril', genericName: 'Enalapril', drugClass: 'ACE' as const, dose: '5 mg', frequency: 'Twice daily', startDate: '2024-01-15' },
+      { name: 'Bisoprolol', genericName: 'Bisoprolol', drugClass: 'BetaBlocker' as const, dose: '2.5 mg', frequency: 'Once daily', startDate: '2024-01-15' },
+      { name: 'Furosemide', genericName: 'Furosemide', drugClass: 'Diuretic' as const, dose: '40 mg', frequency: 'Once daily', startDate: '2024-01-15' },
+    ],
     lastReadingTime: minutesAgo(25),
     vitals: Array.from({ length: 14 }, (_, i) => ({
       date: daysAgo(13 - i),

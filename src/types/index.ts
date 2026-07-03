@@ -1,5 +1,36 @@
 export type Condition = 'COPD' | 'Hypertension' | 'Diabetes' | 'Heart Failure';
 
+export interface Medication {
+  name: string;
+  genericName: string;
+  drugClass: 'ACE' | 'ARB' | 'CCB' | 'Diuretic' | 'BetaBlocker' | 'MRA' | 'AlphaBlocker' | 'Central' | 'ARNI' | 'Other';
+  dose: string;
+  frequency: string;
+  startDate: string;
+}
+
+export interface MedicationStep {
+  step: 1 | 2 | 3 | 4 | 5 | 6;
+  label: string;
+  drugs: Medication[];
+}
+
+export type EscalationReason = 'consecutive_elevated' | 'consecutive_severe' | 'crisis' | 'none';
+
+export interface EscalationRecommendation {
+  shouldEscalate: boolean;
+  reason: EscalationReason;
+  currentStep: number;
+  nextStep: number;
+  consecutiveElevatedCount: number;
+  escalationThreshold: number;
+  recommendedAddition: string;
+  recommendedRegimen: string[];
+  contraindications: string[];
+  guidelineReference: string;
+  urgency: 'routine' | 'urgent' | 'immediate';
+}
+
 export type AlertStatus = 'critical' | 'warning' | 'stable' | 'normal';
 
 export interface VitalReading {
@@ -38,6 +69,8 @@ export interface Patient {
   alerts: Alert[];
   alertStatus: AlertStatus;
   lastReadingTime: string; // "X minutes/hours ago"
+  medications: Medication[];
+  treatmentStep: number;
 }
 
 export interface VitalStatus {
