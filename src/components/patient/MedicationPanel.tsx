@@ -136,17 +136,51 @@ export function MedicationPanel({ patient }: MedicationPanelProps) {
                 </span>
               </div>
 
-              {/* Reason */}
-              <p className="text-sm text-gray-700">
-                {rec.reason === 'crisis' ? (
-                  <span className="font-medium text-red-700">Hypertensive crisis detected — immediate action required</span>
-                ) : (
-                  <>
-                    <span className="font-semibold">{rec.consecutiveElevatedCount}</span>{' '}
-                    {reasonLabels[rec.reason]} (threshold: {rec.escalationThreshold})
-                  </>
+              {/* Reason + readings table */}
+              <div>
+                <p className="text-sm text-gray-700 mb-2">
+                  {rec.reason === 'crisis' ? (
+                    <span className="font-medium text-red-700">Hypertensive crisis detected — immediate action required</span>
+                  ) : (
+                    <>
+                      <span className="font-semibold">{rec.consecutiveElevatedCount}</span>{' '}
+                      {reasonLabels[rec.reason]} (threshold: {rec.escalationThreshold})
+                    </>
+                  )}
+                </p>
+                {rec.elevatedReadings.length > 0 && (
+                  <div className="rounded-lg overflow-hidden border border-current/20">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-black/5 text-gray-600">
+                          <th className="text-left px-3 py-1.5 font-medium">Date</th>
+                          <th className="text-left px-3 py-1.5 font-medium">Systolic</th>
+                          <th className="text-left px-3 py-1.5 font-medium">Diastolic</th>
+                          <th className="text-left px-3 py-1.5 font-medium">Classification</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-current/10 bg-white/60">
+                        {rec.elevatedReadings.map((r, i) => (
+                          <tr key={i}>
+                            <td className="px-3 py-1.5 text-gray-700">
+                              {new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className="px-3 py-1.5 font-semibold text-red-700">{r.systolic} mmHg</td>
+                            <td className="px-3 py-1.5 font-semibold text-red-700">{r.diastolic} mmHg</td>
+                            <td className="px-3 py-1.5 text-gray-600">
+                              {r.systolic >= 180 || r.diastolic >= 120
+                                ? '🔴 Crisis'
+                                : r.systolic >= 160 || r.diastolic >= 100
+                                ? '🟠 Severe (Stage 2+)'
+                                : '🟡 Elevated (Stage 2)'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-              </p>
+              </div>
 
               {/* Step transition */}
               <div className="flex items-center gap-2 text-sm">
@@ -160,6 +194,22 @@ export function MedicationPanel({ patient }: MedicationPanelProps) {
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recommended Addition</p>
                 <p className="text-sm font-medium text-gray-900">{rec.recommendedAddition}</p>
               </div>
+
+              {/* Titration detail for Step 3 */}
+              {rec.titrationTarget && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">One Drug at a Time — IGH V Principle</p>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="font-medium text-gray-900">{rec.titrationTarget.drugName}</span>
+                    <span className="text-gray-400">current:</span>
+                    <span className="font-mono bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-700">{rec.titrationTarget.currentDose}</span>
+                    <span className="text-gray-400">→</span>
+                    <span className="font-mono bg-blue-600 text-white px-2 py-0.5 rounded">{rec.titrationTarget.targetDose}</span>
+                    <span className="text-xs text-blue-600">(IGH V Table 24 max)</span>
+                  </div>
+                  <p className="text-xs text-blue-700">{rec.titrationTarget.note}</p>
+                </div>
+              )}
 
               {/* Full next-step regimen */}
               <div>

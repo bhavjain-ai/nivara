@@ -17,6 +17,19 @@ export interface MedicationStep {
 
 export type EscalationReason = 'consecutive_elevated' | 'consecutive_severe' | 'crisis' | 'none';
 
+export interface ElevatedReading {
+  date: string;
+  systolic: number;
+  diastolic: number;
+}
+
+export interface TitrationTarget {
+  drugName: string;
+  currentDose: string;
+  targetDose: string;   // specific max dose from IGH V Table 24
+  note: string;
+}
+
 export interface EscalationRecommendation {
   shouldEscalate: boolean;
   reason: EscalationReason;
@@ -26,6 +39,8 @@ export interface EscalationRecommendation {
   escalationThreshold: number;
   recommendedAddition: string;
   recommendedRegimen: string[];
+  elevatedReadings: ElevatedReading[];  // actual dates + values that triggered this
+  titrationTarget: TitrationTarget | null; // for Step 3 — ONE drug to up-titrate
   contraindications: string[];
   guidelineReference: string;
   urgency: 'routine' | 'urgent' | 'immediate';
