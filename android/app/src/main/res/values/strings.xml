@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nivara Sync</string>
+    <string name="onboarding_title">Nivara Health Sync</string>
+    <string name="onboarding_subtitle">Blood Pressure Monitoring</string>
+    <string name="patient_id_label">Patient Enrollment Code</string>
+    <string name="patient_id_hint">e.g. P001</string>
+    <string name="connect_health_data">Connect Health Data</string>
+    <string name="health_connect_rationale">Nivara Sync reads your blood pressure measurements from Android Health Connect to share with your care team. No other health data is accessed.</string>
+    <string name="sync_status_connected">Health Connect: Connected</string>
+    <string name="sync_status_disconnected">Health Connect: Not Connected</string>
+    <string name="last_synced">Last synced</string>
+    <string name="never_synced">Never synced</string>
+    <string name="sync_now">Sync Now</string>
+    <string name="syncing">Syncing…</string>
+</resources>
