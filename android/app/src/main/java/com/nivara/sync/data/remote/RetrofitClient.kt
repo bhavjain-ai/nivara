@@ -8,8 +8,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    // Replace with your deployed backend URL (no trailing slash before /api/...)
-    private const val BASE_URL = "https://YOUR_BACKEND_URL/"
+    private const val BASE_URL = "https://nivara-j9ct.onrender.com/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

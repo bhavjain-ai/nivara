@@ -106,6 +106,17 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
 
         Text("Background sync runs every 4 hours automatically.", style = MaterialTheme.typography.labelSmall,
             color = Color.Gray, modifier = Modifier.align(Alignment.CenterHorizontally))
+
+        OutlinedButton(
+            onClick = { viewModel.sendTestReading() },
+            enabled = !uiState.isSyncing,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Icon(Icons.Default.BugReport, contentDescription = null, tint = NivaraBlue)
+            Spacer(Modifier.width(8.dp))
+            Text("Send Test Reading (125/82)", color = NivaraBlue, fontWeight = FontWeight.Medium)
+        }
     }
 }
 

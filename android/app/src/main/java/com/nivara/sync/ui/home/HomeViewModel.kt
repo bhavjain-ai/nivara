@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nivara.sync.data.local.PreferencesManager
 import com.nivara.sync.data.local.SyncQueueManager
+import com.nivara.sync.data.remote.RetrofitClient
+import com.nivara.sync.data.remote.models.BpReadingRequest
 import com.nivara.sync.data.repository.HealthConnectRepository
 import com.nivara.sync.data.repository.SyncRepository
 import com.nivara.sync.data.repository.SyncResult
@@ -49,6 +51,34 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 lastBpReading = prefs.lastBpReading ?: "—",
                 pendingQueueCount = queue.getAll().size,
             )
+        }
+    }
+
+    fun sendTestReading() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSyncing = true, syncMessage = null)
+            try {
+                val request = BpReadingRequest(
+                    patientId = "android-test",
+                    systolic = 125,
+                    diastolic = 82,
+                    pulse = 72,
+                    timestamp = Instant.now().toString(),
+                )
+                val response = RetrofitClient.apiService.uploadBpReading(request)
+                val body = response.body()
+                _uiState.value = _uiState.value.copy(
+                    syncMessage = if (response.isSuccessful && body?.success == true) {
+                        "✓ Test reading sent — total readings for android-test: ${body.totalReadings}"
+                    } else {
+                        "Sync failed: ${body?.error ?: response.errorBody()?.string() ?: response.message()}"
+                    },
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(syncMessage = "Sync failed: ${e.message}")
+            } finally {
+                _uiState.value = _uiState.value.copy(isSyncing = false)
+            }
         }
     }
 
