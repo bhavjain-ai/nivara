@@ -28,6 +28,10 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
 
     val permissionsRequired get() = hcRepo.requiredPermissions
 
+    fun refreshAvailability() {
+        _uiState.value = _uiState.value.copy(isHealthConnectAvailable = hcRepo.isHealthConnectAvailable())
+    }
+
     fun onPatientIdChanged(value: String) {
         _uiState.value = _uiState.value.copy(patientIdInput = value.trim().uppercase(), errorMessage = null)
     }
