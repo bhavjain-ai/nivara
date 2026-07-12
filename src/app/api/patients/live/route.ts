@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAllLivePatients, getLivePatient } from '@/lib/reading-store';
 import { mockPatients } from '@/lib/mock-data';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/patients/live
  *
