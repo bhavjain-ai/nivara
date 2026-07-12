@@ -1,0 +1,6 @@
+-keep class com.nivara.sync.data.remote.models.** { *; }
+-keep class com.nivara.sync.domain.model.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn okhttp3.**
+-dontwarn retrofit2.**
