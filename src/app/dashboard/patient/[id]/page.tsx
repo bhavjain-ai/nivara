@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { VitalsCards } from '@/components/patient/VitalsCards';
@@ -9,8 +10,8 @@ import { AlertHistory } from '@/components/patient/AlertHistory';
 import { MedicationPanel } from '@/components/patient/MedicationPanel';
 import { Badge } from '@/components/ui/Badge';
 import { getPatientById } from '@/lib/mock-data';
-import { AlertStatus } from '@/types';
-import { MapPin, Phone, Calendar, User, ArrowLeft } from 'lucide-react';
+import { AlertStatus, Patient, VitalReading } from '@/types';
+import { MapPin, Phone, Calendar, User, ArrowLeft, Wifi } from 'lucide-react';
 import Link from 'next/link';
 
 interface PageProps {
@@ -32,7 +33,74 @@ function statusLabel(s: AlertStatus): string {
 
 export default function PatientDetailPage({ params }: PageProps) {
   const { id } = params;
-  const patient = getPatientById(id);
+  const basePatient = getPatientById(id);
+  const [patient, setPatient] = useState<Patient | null>(basePatient ?? null);
+  const [hasLiveData, setHasLiveData] = useState(false);
+
+  useEffect(() => {
+    async function fetchLive() {
+      try {
+        const res = await fetch('/api/patients/live');
+        if (!res.ok) return;
+        const data = await res.json();
+        const liveRecord = (data.patients ?? []).find((p: { id: string }) => p.id === id);
+        if (!liveRecord) return;
+
+        setHasLiveData(true);
+
+        if (basePatient) {
+          // Merge live readings into the existing mock patient's vitals
+          const liveVitals: VitalReading[] = (liveRecord.liveReadings ?? []).map((r: {
+            systolic: number; diastolic: number; pulse?: number; timestamp: string;
+          }) => ({
+            date: r.timestamp.split('T')[0],
+            systolic: r.systolic,
+            diastolic: r.diastolic,
+            heartRate: r.pulse,
+          }));
+          const existingDates = new Set(basePatient.vitals.map((v: VitalReading) => v.date));
+          const newVitals = liveVitals.filter(v => !existingDates.has(v.date));
+          setPatient({
+            ...basePatient,
+            vitals: [...newVitals, ...basePatient.vitals],
+            lastReadingTime: liveRecord.lastReadingTime,
+          });
+        } else {
+          // Unknown patient — build from live data
+          const liveVitals: VitalReading[] = (liveRecord.liveReadings ?? []).map((r: {
+            systolic: number; diastolic: number; pulse?: number; timestamp: string;
+          }) => ({
+            date: r.timestamp.split('T')[0],
+            systolic: r.systolic,
+            diastolic: r.diastolic,
+            heartRate: r.pulse,
+          }));
+          setPatient({
+            id: liveRecord.id,
+            name: liveRecord.name,
+            age: liveRecord.age ?? 0,
+            gender: 'Male',
+            condition: 'Hypertension',
+            city: '—',
+            phoneNumber: '—',
+            physicianName: 'Unassigned',
+            enrollmentDate: liveRecord.enrollmentDate ?? new Date().toISOString().split('T')[0],
+            treatmentStep: 1,
+            medications: [],
+            alerts: [],
+            alertStatus: liveRecord.alertStatus as AlertStatus,
+            lastReadingTime: liveRecord.lastReadingTime,
+            vitals: liveVitals,
+          });
+        }
+      } catch {
+        // keep showing mock/null patient
+      }
+    }
+    fetchLive();
+    const interval = setInterval(fetchLive, 30_000);
+    return () => clearInterval(interval);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!patient) {
     return (
@@ -74,6 +142,11 @@ export default function PatientDetailPage({ params }: PageProps) {
                   <div>
                     <div className="flex items-center gap-3 mb-1">
                       <h1 className="text-xl font-bold text-gray-900">{patient.name}</h1>
+                      {hasLiveData && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium border border-green-200">
+                          <Wifi className="w-3 h-3" /> Live
+                        </span>
+                      )}
                       <Badge variant={patient.alertStatus === 'normal' ? 'stable' : patient.alertStatus}>
                         {statusLabel(patient.alertStatus)}
                       </Badge>
@@ -111,6 +184,54 @@ export default function PatientDetailPage({ params }: PageProps) {
               </div>
             </div>
           </div>
+
+          {/* Live readings from Nivara Sync (Android app) */}
+          {hasLiveData && patient.vitals.some(v => v.systolic) && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Wifi className="w-3.5 h-3.5 text-green-600" />
+                Live Readings from Nivara Sync
+              </h2>
+              <div className="bg-white rounded-xl border border-green-200 shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-green-50 border-b border-green-100">
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Timestamp</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Systolic</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Diastolic</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Pulse</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Classification</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {patient.vitals
+                      .filter(v => v.systolic && v.diastolic)
+                      .slice(0, 10)
+                      .map((v, i) => {
+                        const sys = v.systolic!;
+                        const dia = v.diastolic!;
+                        const cls = sys >= 180 || dia >= 120 ? { label: 'Crisis', color: 'text-red-700 bg-red-50' }
+                          : sys >= 160 || dia >= 100 ? { label: 'Stage 2+ Severe', color: 'text-red-600 bg-red-50' }
+                          : sys >= 140 || dia >= 90 ? { label: 'Stage 2', color: 'text-amber-700 bg-amber-50' }
+                          : sys >= 130 || dia >= 80 ? { label: 'Stage 1', color: 'text-yellow-700 bg-yellow-50' }
+                          : { label: 'Normal', color: 'text-green-700 bg-green-50' };
+                        return (
+                          <tr key={i} className="hover:bg-gray-50">
+                            <td className="px-4 py-2.5 text-gray-600 text-xs">{new Date(v.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                            <td className="px-4 py-2.5 font-semibold text-gray-900">{sys} mmHg</td>
+                            <td className="px-4 py-2.5 font-semibold text-gray-900">{dia} mmHg</td>
+                            <td className="px-4 py-2.5 text-gray-600">{v.heartRate ? `${v.heartRate} bpm` : '—'}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls.color}`}>{cls.label}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {/* Vitals Cards */}
           <section>
