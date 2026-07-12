@@ -3,3 +3,10 @@ node_modules/
 .env.local
 *.log
 data/live-readings.json
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.hprof

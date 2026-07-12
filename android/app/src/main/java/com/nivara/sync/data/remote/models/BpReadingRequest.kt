@@ -14,6 +14,7 @@ data class BpReadingResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("reading_id") val readingId: String?,
     @SerializedName("received_at") val receivedAt: String?,
+    @SerializedName("total_readings") val totalReadings: Int?,
     @SerializedName("message") val message: String?,
     @SerializedName("error") val error: String?,
 )
