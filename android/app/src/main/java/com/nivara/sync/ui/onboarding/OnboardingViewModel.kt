@@ -49,8 +49,15 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
     fun onPermissionsResult() {
         viewModelScope.launch {
             val granted = hcRepo.hasPermissions()
-            if (granted) prefs.onboardingComplete = true
-            _uiState.value = _uiState.value.copy(hasPermissions = granted)
+            if (granted) {
+                prefs.onboardingComplete = true
+                _uiState.value = _uiState.value.copy(hasPermissions = true, errorMessage = null)
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    hasPermissions = false,
+                    errorMessage = "Blood pressure and heart rate permissions were not granted in Health Connect. Please allow both and try again.",
+                )
+            }
         }
     }
 }
