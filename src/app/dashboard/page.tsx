@@ -9,7 +9,6 @@ import { AlertPanel } from '@/components/dashboard/AlertPanel';
 import { ConditionTabs } from '@/components/dashboard/ConditionTabs';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { getDashboardStats, getPatientSummaries, getRecentAlerts, mockPatients } from '@/lib/mock-data';
-import { getLatestVitalsSummary } from '@/lib/vitals-analyzer';
 import { Condition, AlertStatus } from '@/types';
 import { Bell, Wifi } from 'lucide-react';
 
@@ -31,9 +30,8 @@ interface LivePatient {
   lastReadingTime: string;
   liveReadings: LiveReading[];
   isLive: boolean;
-  // fields present when patient matches mock data
   age?: number;
-  vitals?: Array<{ date: string; systolic?: number; diastolic?: number; heartRate?: number }>;
+  vitals?: Array<{ date: string; systolic?: number; diastolic?: number }>;
 }
 
 function buildLiveSummary(p: LivePatient) {
@@ -42,7 +40,7 @@ function buildLiveSummary(p: LivePatient) {
     id: p.id,
     name: p.name,
     age: p.age ?? 0,
-    condition: p.condition as Condition,
+    conditions: ['Hypertension'] as Condition[],
     city: p.city,
     alertStatus: p.alertStatus as AlertStatus,
     lastReadingTime: p.lastReadingTime,
@@ -50,6 +48,9 @@ function buildLiveSummary(p: LivePatient) {
     latestVitals: {
       bp: latest ? `${latest.systolic}/${latest.diastolic}` : undefined,
     },
+    coachingTier: 'Maintenance-touch' as const,
+    coachingCallsCompleted: 0,
+    coachingCallsTarget: 5,
   };
 }
 
@@ -124,10 +125,8 @@ export default function DashboardPage() {
 
   const counts: Record<string, number> = {
     All: mockPatients.length + liveNewCount,
-    COPD: mockPatients.filter((p) => p.condition === 'COPD').length,
-    Hypertension: mockPatients.filter((p) => p.condition === 'Hypertension').length + livePatients.filter(p => !knownMockIds.has(p.id) && p.condition === 'Hypertension').length,
-    Diabetes: mockPatients.filter((p) => p.condition === 'Diabetes').length,
-    'Heart Failure': mockPatients.filter((p) => p.condition === 'Heart Failure').length,
+    Hypertension: mockPatients.filter((p) => p.conditions.includes('Hypertension')).length + livePatients.filter(p => !knownMockIds.has(p.id) && p.condition === 'Hypertension').length,
+    Diabetes: mockPatients.filter((p) => p.conditions.includes('Diabetes')).length,
   };
 
   return (
@@ -136,7 +135,7 @@ export default function DashboardPage() {
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
         <Header
           title="Patient Overview"
-          subtitle="Remote Patient Monitoring — India"
+          subtitle="Nivara Health — Chronic Disease Monitoring Pilot, India"
         />
         <main className="flex-1 p-6 space-y-6">
           {/* Live sync indicator */}
@@ -201,8 +200,8 @@ export default function DashboardPage() {
         </main>
 
         <footer className="px-6 py-3 border-t border-gray-200 bg-white text-xs text-gray-400 flex items-center justify-between">
-          <span>Nivara RPM Platform — India Edition</span>
-          <span>Guidelines: AHA 2017 · ISH India 2020 · RSSDI · GOLD · AHA HF</span>
+          <span>Nivara RPM Platform — India Pilot</span>
+          <span>Guidelines: IGH-V (2025–2026) · RSSDI 2022/2024 · ADA Standards of Care 2026</span>
         </footer>
       </div>
     </div>

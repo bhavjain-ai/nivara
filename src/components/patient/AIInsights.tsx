@@ -18,38 +18,8 @@ const riskBadgeVariant: Record<string, 'critical' | 'warning' | 'stable' | 'info
   Low: 'stable',
 };
 
-const RAJESH_HARDCODED_INSIGHT: AIInsight = {
-  summary:
-    'Rajesh Kumar (67M, COPD, Mumbai) presents with a clinically significant and worsening pattern over the past 14 days. SpO2 has declined from 88% to a critical 83% — well below the GOLD COPD target of ≥90% — with no recovery trend. Concurrent Stage 2 hypertension (147/94 mmHg today) is placing additional strain on an already-compromised cardiopulmonary system. A slow but consistent 1.5 kg weight gain over two weeks raises concern for early fluid retention, possibly indicating COPD-HF overlap or early cor pulmonale. Heart rate has trended upward (88 → 96 bpm), likely a compensatory response to hypoxia. Immediate physician review is warranted.',
-  riskLevel: 'Critical',
-  recommendations: [
-    'Urgent physician review within 24 hours — SpO2 of 83% warrants same-day telehealth or ER referral if accompanied by dyspnea or altered sensorium.',
-    'Initiate or titrate supplemental oxygen to maintain SpO2 ≥90% per GOLD 2024 COPD guidelines; titrate to lowest effective FiO2.',
-    'Review antihypertensive regimen — BP of 147/94 mmHg exceeds ISH India 2020 Stage 2 threshold; consider adding or up-titrating ACE inhibitor/ARB which may also benefit if cor pulmonale is developing.',
-    'Order BNP/NT-proBNP and chest X-ray to rule out early right heart failure or cor pulmonale given weight gain trend and rising HR.',
-    'Reassess bronchodilator regimen — confirm patient is on LAMA + LABA combination (GOLD Group C/D criteria); check inhaler technique and adherence.',
-    'Schedule pulmonology review within 1 week; consider repeat spirometry if not performed in the past 6 months.',
-    'Educate patient on home SpO2 monitoring: report any reading below 90% immediately; reinforce action plan for COPD exacerbations.',
-  ],
-  alertTriggers: [
-    'SpO2 83% — severe hypoxia per GOLD COPD guidelines (Critical threshold: <85%)',
-    'SpO2 declining trend over 14 days: 88% → 83% with no recovery',
-    'BP 147/94 mmHg — Stage 2 Hypertension per ISH India 2020 (≥140/90 mmHg)',
-    'Heart rate rising: 88 → 96 bpm over 14 days, likely compensatory tachycardia from hypoxia',
-    'Weight gain 1.5 kg over 14 days — clinically significant in COPD context (possible fluid retention)',
-  ],
-  guidelinesReferenced: [
-    'GOLD COPD Guidelines 2024',
-    'ISH India Hypertension Guidelines 2020',
-    'AHA/ACC Blood Pressure Guidelines 2017',
-    'AHA/ACC Heart Failure Guidelines 2022',
-    'MOHFW India COPD Management Protocol',
-  ],
-};
-
 export function AIInsights({ patient }: AIInsightsProps) {
-  const isRajesh = patient.id === 'P001';
-  const [insight, setInsight] = useState<AIInsight | null>(isRajesh ? RAJESH_HARDCODED_INSIGHT : null);
+  const [insight, setInsight] = useState<AIInsight | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +35,7 @@ export function AIInsights({ patient }: AIInsightsProps) {
           patient: {
             name: patient.name,
             age: patient.age,
-            condition: patient.condition,
+            conditions: patient.conditions,
             gender: patient.gender,
           },
           latestVitals,
@@ -129,7 +99,7 @@ export function AIInsights({ patient }: AIInsightsProps) {
           <div className="text-center py-8 text-gray-400">
             <Brain className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">Click &ldquo;Generate Analysis&rdquo; to get AI-powered clinical insights</p>
-            <p className="text-xs mt-1">Powered by Claude, analyzed against AHA/RSSDI/ISH India guidelines</p>
+            <p className="text-xs mt-1">Powered by Claude, analyzed against IGH-V / RSSDI / ADA guidelines</p>
           </div>
         )}
 

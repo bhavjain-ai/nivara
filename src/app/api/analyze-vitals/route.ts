@@ -8,13 +8,11 @@ function buildPrompt(data: AnalyzeVitalsRequest): string {
   const { patient, latestVitals, last14DaysVitals, currentAlerts } = data;
 
   const vitalsSummary = last14DaysVitals
-    .slice(-7)
+    .slice(-10)
     .map((v, i) => {
-      const parts: string[] = [`Day ${i + 1}:`];
+      const parts: string[] = [`Reading ${i + 1} (${v.date}):`];
       if (v.systolic && v.diastolic) parts.push(`BP ${v.systolic}/${v.diastolic} mmHg`);
       if (v.glucose) parts.push(`Glucose ${v.glucose} mg/dL (${v.glucoseType || 'fasting'})`);
-      if (v.o2Sat) parts.push(`SpO2 ${v.o2Sat}%`);
-      if (v.weight) parts.push(`Weight ${v.weight} kg`);
       return parts.join(' | ');
     })
     .join('\n');
@@ -24,34 +22,31 @@ function buildPrompt(data: AnalyzeVitalsRequest): string {
     latestSummary.push(`BP: ${latestVitals.systolic}/${latestVitals.diastolic} mmHg`);
   if (latestVitals.glucose)
     latestSummary.push(`Glucose: ${latestVitals.glucose} mg/dL (${latestVitals.glucoseType || 'fasting'})`);
-  if (latestVitals.o2Sat) latestSummary.push(`SpO2: ${latestVitals.o2Sat}%`);
-  if (latestVitals.weight) latestSummary.push(`Weight: ${latestVitals.weight} kg`);
 
   const alertSummary = currentAlerts
     .map((a) => `- [${a.severity.toUpperCase()}] ${a.type}: ${a.message}`)
     .join('\n');
 
-  return `You are an expert clinical AI assistant for Indian physicians managing patients with Remote Patient Monitoring (RPM) systems.
+  return `You are an expert clinical AI assistant supporting Nivara Health's physician-led remote monitoring pilot for hypertension and Type 2 diabetes patients in India.
 
 PATIENT INFORMATION:
 - Name: ${patient.name}
 - Age: ${patient.age} years, ${patient.gender}
-- Primary Condition: ${patient.condition}
+- Enrolled condition(s): ${patient.conditions.join(' + ')}
 
 LATEST VITALS (today):
-${latestSummary.join('\n')}
+${latestSummary.join('\n') || 'No vitals recorded yet'}
 
-TREND DATA (last 7 days):
+TREND DATA (recent readings):
 ${vitalsSummary}
 
 CURRENT ALERTS:
 ${alertSummary || 'No active alerts'}
 
 Please analyze this patient's vitals against the following guidelines:
-- Blood Pressure: AHA 2017 + ISH India 2020 guidelines
-- Blood Glucose: RSSDI (Research Society for Study of Diabetes in India) + ADA guidelines
-- O2 Saturation: GOLD guidelines for COPD, AHA HF guidelines for Heart Failure
-- Weight changes: AHA Heart Failure guidelines (>2kg/24h alert, >2.5kg/48h critical)
+- Blood Pressure: Indian Hypertension Guidelines V (IGH-V, 2025-2026), individualized target by risk profile (general <140/90, high-risk <130/80, diabetes-comorbid 120-129/70-79, elderly 130-140/70-80)
+- Blood Glucose / HbA1c: RSSDI Clinical Practice Recommendations 2022/2024 + ADA Standards of Care 2026, individualized HbA1c tier (6.5% / <7.0% / 7.5-8.0%) and matching fasting/postprandial glucose targets
+- Hypoglycemia: Level 1 (<70, >=54 mg/dL) requires patient+family notification; Level 2 (<54 mg/dL) requires immediate physician contact
 
 Respond ONLY with a valid JSON object in this exact format (no markdown, no explanation, just JSON):
 {
@@ -66,8 +61,8 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no expl
     "Specific alert trigger if any vitals breach thresholds"
   ],
   "guidelinesReferenced": [
-    "AHA 2017",
-    "ISH India 2020"
+    "IGH-V 2025-2026",
+    "RSSDI 2022/2024"
   ]
 }`;
 }
