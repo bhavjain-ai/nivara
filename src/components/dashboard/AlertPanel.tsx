@@ -1,6 +1,6 @@
 import { Alert } from '@/types';
 import { Badge } from '@/components/ui/Badge';
-import { AlertTriangle, AlertCircle, Activity } from 'lucide-react';
+import { AlertCircle, Activity, Droplets } from 'lucide-react';
 import Link from 'next/link';
 
 interface AlertPanelProps {
@@ -9,9 +9,7 @@ interface AlertPanelProps {
 
 const typeIcon: Record<string, React.ComponentType<{ className?: string }>> = {
   BP: Activity,
-  Glucose: Activity,
-  'O2 Sat': AlertCircle,
-  Weight: AlertTriangle,
+  Glucose: Droplets,
 };
 
 function timeAgo(iso: string): string {

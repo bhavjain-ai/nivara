@@ -1,7 +1,7 @@
 import { Patient } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
-import { TrendingUp, TrendingDown, Minus, Activity, Droplets, Wind, Scale } from 'lucide-react';
-import { analyzeBP, analyzeGlucose, analyzeO2Sat, analyzeWeight } from '@/lib/guidelines';
+import { TrendingUp, TrendingDown, Minus, Activity, Droplets, FlaskConical } from 'lucide-react';
+import { analyzeBP, analyzeGlucose, getBPTarget, getGlucoseTargets } from '@/lib/guidelines';
 
 interface VitalsCardsProps {
   patient: Patient;
@@ -24,84 +24,87 @@ function getTrend(values: (number | undefined)[]): 'up' | 'down' | 'stable' {
 
 const statusColors: Record<string, string> = {
   critical: 'border-red-300 bg-red-50',
-  alert: 'border-amber-300 bg-amber-50',
   warning: 'border-amber-300 bg-amber-50',
   normal: 'border-green-200 bg-green-50',
 };
 
 const statusTextColors: Record<string, string> = {
   critical: 'text-red-600',
-  alert: 'text-amber-600',
   warning: 'text-amber-600',
   normal: 'text-green-600',
 };
 
 export function VitalsCards({ patient }: VitalsCardsProps) {
   const vitals = patient.vitals;
-  const latest = vitals[vitals.length - 1];
+  const bpReadings = vitals.filter((v) => v.systolic && v.diastolic);
+  const glucoseReadings = vitals.filter((v) => v.glucose);
+  const latestBP = bpReadings[bpReadings.length - 1];
+  const latestGlucose = glucoseReadings[glucoseReadings.length - 1];
+  const latestHbA1c = patient.hba1cReadings[patient.hba1cReadings.length - 1];
 
-  const bpStatus =
-    latest.systolic && latest.diastolic
-      ? analyzeBP(latest.systolic, latest.diastolic, patient.condition)
+  const bpTarget = getBPTarget(patient.conditions, patient.comorbidities, patient.age);
+  const bpStatus = latestBP ? analyzeBP(latestBP.systolic!, latestBP.diastolic!, bpTarget) : null;
+
+  const glucoseTargets = patient.hba1cTier ? getGlucoseTargets(patient.hba1cTier.tier) : null;
+  const glucoseStatus =
+    latestGlucose && glucoseTargets
+      ? analyzeGlucose(latestGlucose.glucose!, latestGlucose.glucoseType || 'fasting', glucoseTargets)
       : null;
 
-  const glucoseStatus = latest.glucose
-    ? analyzeGlucose(latest.glucose, latest.glucoseType || 'fasting', patient.condition)
-    : null;
+  const systolicTrend = getTrend(bpReadings.map((v) => v.systolic));
+  const glucoseTrend = getTrend(glucoseReadings.map((v) => v.glucose));
 
-  const o2Status = latest.o2Sat ? analyzeO2Sat(latest.o2Sat, patient.condition) : null;
+  const cards: {
+    label: string;
+    icon: typeof Activity;
+    value: string;
+    unit: string;
+    subLabel?: string;
+    trend: 'up' | 'down' | 'stable';
+    status: { status: string; message: string } | null;
+  }[] = [];
 
-  const prevWeights = vitals
-    .slice(0, -1)
-    .map((v) => v.weight)
-    .filter((w): w is number => w !== undefined);
-  const weightStatus = latest.weight
-    ? analyzeWeight(latest.weight, prevWeights, patient.condition)
-    : null;
-
-  const systolicTrend = getTrend(vitals.map((v) => v.systolic));
-  const glucoseTrend = getTrend(vitals.map((v) => v.glucose));
-  const o2Trend = getTrend(vitals.map((v) => v.o2Sat));
-  const weightTrend = getTrend(vitals.map((v) => v.weight));
-
-  const cards = [
-    {
+  if (patient.conditions.includes('Hypertension')) {
+    cards.push({
       label: 'Blood Pressure',
       icon: Activity,
-      value: latest.systolic && latest.diastolic ? `${latest.systolic}/${latest.diastolic}` : 'N/A',
+      value: latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : 'N/A',
       unit: 'mmHg',
+      subLabel: `Target: ${bpTarget.label}`,
       trend: systolicTrend,
       status: bpStatus,
-    },
-    {
+    });
+  }
+
+  if (patient.conditions.includes('Diabetes')) {
+    cards.push({
       label: 'Blood Glucose',
       icon: Droplets,
-      value: latest.glucose ? String(latest.glucose) : 'N/A',
+      value: latestGlucose ? String(latestGlucose.glucose) : 'N/A',
       unit: 'mg/dL',
-      subLabel: latest.glucoseType === 'post-meal' ? 'Post-meal' : 'Fasting',
+      subLabel: latestGlucose?.glucoseType === 'post-meal' ? 'Post-meal (2hr)' : 'Fasting',
       trend: glucoseTrend,
       status: glucoseStatus,
-    },
-    {
-      label: 'O2 Saturation',
-      icon: Wind,
-      value: latest.o2Sat ? String(latest.o2Sat) : 'N/A',
+    });
+    cards.push({
+      label: 'HbA1c',
+      icon: FlaskConical,
+      value: latestHbA1c ? latestHbA1c.value.toFixed(1) : 'N/A',
       unit: '%',
-      trend: o2Trend,
-      status: o2Status,
-    },
-    {
-      label: 'Weight',
-      icon: Scale,
-      value: latest.weight ? String(latest.weight) : 'N/A',
-      unit: 'kg',
-      trend: weightTrend,
-      status: weightStatus,
-    },
-  ];
+      subLabel: patient.hba1cTier ? `Target: ${patient.hba1cTier.target} (Tier ${patient.hba1cTier.tier})` : undefined,
+      trend: 'stable',
+      status:
+        latestHbA1c && patient.hba1cTier
+          ? {
+              status: latestHbA1c.value <= patient.hba1cTier.targetValue ? 'normal' : 'warning',
+              message: latestHbA1c.value <= patient.hba1cTier.targetValue ? 'At individualized target' : 'Above individualized target',
+            }
+          : null,
+    });
+  }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
       {cards.map(({ label, icon: Icon, value, unit, subLabel, trend, status }) => {
         const borderClass = status ? statusColors[status.status] || statusColors.normal : 'border-gray-200 bg-white';
         const textClass = status ? statusTextColors[status.status] || statusTextColors.normal : 'text-gray-500';

@@ -8,6 +8,7 @@ import { VitalsChart } from '@/components/patient/VitalsChart';
 import { AIInsights } from '@/components/patient/AIInsights';
 import { AlertHistory } from '@/components/patient/AlertHistory';
 import { MedicationPanel } from '@/components/patient/MedicationPanel';
+import { CoachingPanel } from '@/components/patient/CoachingPanel';
 import { Badge } from '@/components/ui/Badge';
 import { getPatientById } from '@/lib/mock-data';
 import { AlertStatus, Patient, VitalReading } from '@/types';
@@ -19,10 +20,8 @@ interface PageProps {
 }
 
 const conditionColors: Record<string, string> = {
-  COPD: 'bg-blue-50 text-blue-700',
   Hypertension: 'bg-purple-50 text-purple-700',
   Diabetes: 'bg-orange-50 text-orange-700',
-  'Heart Failure': 'bg-rose-50 text-rose-700',
 };
 
 function statusLabel(s: AlertStatus): string {
@@ -49,14 +48,12 @@ export default function PatientDetailPage({ params }: PageProps) {
         setHasLiveData(true);
 
         if (basePatient) {
-          // Merge live readings into the existing mock patient's vitals
           const liveVitals: VitalReading[] = (liveRecord.liveReadings ?? []).map((r: {
-            systolic: number; diastolic: number; pulse?: number; timestamp: string;
+            systolic: number; diastolic: number; timestamp: string;
           }) => ({
             date: r.timestamp.split('T')[0],
             systolic: r.systolic,
             diastolic: r.diastolic,
-            heartRate: r.pulse,
           }));
           const existingDates = new Set(basePatient.vitals.map((v: VitalReading) => v.date));
           const newVitals = liveVitals.filter(v => !existingDates.has(v.date));
@@ -66,31 +63,38 @@ export default function PatientDetailPage({ params }: PageProps) {
             lastReadingTime: liveRecord.lastReadingTime,
           });
         } else {
-          // Unknown patient — build from live data
           const liveVitals: VitalReading[] = (liveRecord.liveReadings ?? []).map((r: {
-            systolic: number; diastolic: number; pulse?: number; timestamp: string;
+            systolic: number; diastolic: number; timestamp: string;
           }) => ({
             date: r.timestamp.split('T')[0],
             systolic: r.systolic,
             diastolic: r.diastolic,
-            heartRate: r.pulse,
           }));
           setPatient({
             id: liveRecord.id,
             name: liveRecord.name,
             age: liveRecord.age ?? 0,
             gender: 'Male',
-            condition: 'Hypertension',
+            conditions: ['Hypertension'],
+            comorbidities: [],
             city: '—',
             phoneNumber: '—',
             physicianName: 'Unassigned',
             enrollmentDate: liveRecord.enrollmentDate ?? new Date().toISOString().split('T')[0],
-            treatmentStep: 1,
+            htnStep: 1,
+            diabetesStep: null,
+            hba1cTier: null,
+            hba1cReadings: [],
             medications: [],
             alerts: [],
             alertStatus: liveRecord.alertStatus as AlertStatus,
             lastReadingTime: liveRecord.lastReadingTime,
             vitals: liveVitals,
+            coachingTier: 'Maintenance-touch',
+            coachingCallsCompleted: 0,
+            coachingCallsTarget: 5,
+            outreachLog: [],
+            smartGoals: [],
           });
         }
       } catch {
@@ -117,7 +121,7 @@ export default function PatientDetailPage({ params }: PageProps) {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <Header title={patient.name} subtitle={`Patient ID: ${patient.id} · ${patient.condition}`} />
+        <Header title={patient.name} subtitle={`Patient ID: ${patient.id} · ${patient.conditions.join(' + ')}`} />
         <main className="flex-1 p-6 space-y-6">
           {/* Back + Patient Header */}
           <div>
@@ -140,7 +144,7 @@ export default function PatientDetailPage({ params }: PageProps) {
                       .join('')}
                   </div>
                   <div>
-                    <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center gap-3 mb-1 flex-wrap">
                       <h1 className="text-xl font-bold text-gray-900">{patient.name}</h1>
                       {hasLiveData && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium border border-green-200">
@@ -150,11 +154,14 @@ export default function PatientDetailPage({ params }: PageProps) {
                       <Badge variant={patient.alertStatus === 'normal' ? 'stable' : patient.alertStatus}>
                         {statusLabel(patient.alertStatus)}
                       </Badge>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${conditionColors[patient.condition]}`}
-                      >
-                        {patient.condition}
-                      </span>
+                      {patient.conditions.map((c) => (
+                        <span
+                          key={c}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${conditionColors[c]}`}
+                        >
+                          {c}
+                        </span>
+                      ))}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
                       <span className="flex items-center gap-1.5">
@@ -199,7 +206,6 @@ export default function PatientDetailPage({ params }: PageProps) {
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Timestamp</th>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Systolic</th>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Diastolic</th>
-                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Pulse</th>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Classification</th>
                     </tr>
                   </thead>
@@ -211,16 +217,15 @@ export default function PatientDetailPage({ params }: PageProps) {
                         const sys = v.systolic!;
                         const dia = v.diastolic!;
                         const cls = sys >= 180 || dia >= 120 ? { label: 'Crisis', color: 'text-red-700 bg-red-50' }
-                          : sys >= 160 || dia >= 100 ? { label: 'Stage 2+ Severe', color: 'text-red-600 bg-red-50' }
-                          : sys >= 140 || dia >= 90 ? { label: 'Stage 2', color: 'text-amber-700 bg-amber-50' }
-                          : sys >= 130 || dia >= 80 ? { label: 'Stage 1', color: 'text-yellow-700 bg-yellow-50' }
+                          : dia >= 110 ? { label: 'Severe (Stage III)', color: 'text-red-600 bg-red-50' }
+                          : sys >= 160 || dia >= 100 ? { label: 'Moderate (Stage II)', color: 'text-amber-700 bg-amber-50' }
+                          : sys >= 140 || dia >= 90 ? { label: 'Mild (Stage I)', color: 'text-yellow-700 bg-yellow-50' }
                           : { label: 'Normal', color: 'text-green-700 bg-green-50' };
                         return (
                           <tr key={i} className="hover:bg-gray-50">
                             <td className="px-4 py-2.5 text-gray-600 text-xs">{new Date(v.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                             <td className="px-4 py-2.5 font-semibold text-gray-900">{sys} mmHg</td>
                             <td className="px-4 py-2.5 font-semibold text-gray-900">{dia} mmHg</td>
-                            <td className="px-4 py-2.5 text-gray-600">{v.heartRate ? `${v.heartRate} bpm` : '—'}</td>
                             <td className="px-4 py-2.5">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls.color}`}>{cls.label}</span>
                             </td>
@@ -241,10 +246,10 @@ export default function PatientDetailPage({ params }: PageProps) {
             <VitalsCards patient={patient} />
           </section>
 
-          {/* Medication Regimen & Escalation */}
+          {/* Medication Regimen & Titration */}
           <section>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Medications &amp; IGH V Escalation
+              Medications &amp; Titration Ladder
             </h2>
             <MedicationPanel patient={patient} />
           </section>
@@ -252,9 +257,14 @@ export default function PatientDetailPage({ params }: PageProps) {
           {/* Vitals Charts */}
           <section>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Trend Charts — Last 14 Days
+              Trend Charts
             </h2>
             <VitalsChart patient={patient} />
+          </section>
+
+          {/* Care Coordinator Outreach */}
+          <section>
+            <CoachingPanel patient={patient} />
           </section>
 
           {/* AI Insights */}
@@ -269,8 +279,8 @@ export default function PatientDetailPage({ params }: PageProps) {
         </main>
 
         <footer className="px-6 py-3 border-t border-gray-200 bg-white text-xs text-gray-400 flex items-center justify-between">
-          <span>Nivara RPM Platform — India Edition</span>
-          <span>Guidelines: AHA 2017 · ISH India 2020 · RSSDI · GOLD · AHA HF</span>
+          <span>Nivara RPM Platform — India Pilot</span>
+          <span>Guidelines: IGH-V (2025–2026) · RSSDI 2022/2024 · ADA Standards of Care 2026</span>
         </footer>
       </div>
     </div>

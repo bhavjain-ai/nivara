@@ -2,7 +2,7 @@
 
 import { Condition } from '@/types';
 
-const conditions = ['All', 'COPD', 'Hypertension', 'Diabetes', 'Heart Failure'] as const;
+const conditions = ['All', 'Hypertension', 'Diabetes'] as const;
 type ConditionFilter = 'All' | Condition;
 
 interface ConditionTabsProps {

@@ -1,222 +1,180 @@
-import { AlertStatus, Condition, VitalStatus } from '@/types';
+import {
+  AlertStatus,
+  Comorbidity,
+  Condition,
+  GlucoseTargetRange,
+  HbA1cTierInfo,
+  VitalStatus,
+} from '@/types';
 
-// AHA 2017 + ISH India 2020 Blood Pressure Guidelines
-export function analyzeBP(
-  systolic: number,
-  diastolic: number,
-  _condition?: Condition
-): VitalStatus {
+// --- Individualized targets ---
+
+export interface BPTarget {
+  sys: number;
+  dia: number;
+  label: string;
+}
+
+// IGH-V (2025-2026) — BP target is individualized, not one number for everyone
+export function getBPTarget(
+  conditions: Condition[],
+  comorbidities: Comorbidity[],
+  age: number
+): BPTarget {
+  const hasDiabetes = conditions.includes('Diabetes');
+  const highRisk =
+    comorbidities.includes('Established CVD') ||
+    comorbidities.includes('CKD') ||
+    comorbidities.includes('DKD');
+
+  if (hasDiabetes) {
+    return { sys: 129, dia: 79, label: '120–129/70–79 mmHg (diabetes-comorbid target, IGH-V/RSSDI 2022, where tolerated)' };
+  }
+  if (highRisk) {
+    return { sys: 130, dia: 80, label: '<130/80 mmHg (high-risk target — established CVD/CKD, IGH-V)' };
+  }
+  if (age >= 65 && age <= 80) {
+    return { sys: 140, dia: 80, label: '130–140/70–80 mmHg (elderly target, IGH-V — per clinical judgment)' };
+  }
+  return { sys: 140, dia: 90, label: '<140/90 mmHg (general target, IGH-V)' };
+}
+
+const HBA1C_TIERS: Record<1 | 2 | 3, HbA1cTierInfo> = {
+  1: { tier: 1, target: '6.5%', targetValue: 6.5 },
+  2: { tier: 2, target: '<7.0%', targetValue: 7.0 },
+  3: { tier: 3, target: '7.5–8.0%', targetValue: 8.0 },
+};
+
+export function getHbA1cTierInfo(tier: 1 | 2 | 3): HbA1cTierInfo {
+  return HBA1C_TIERS[tier];
+}
+
+export function getGlucoseTargets(hba1cTier: 1 | 2 | 3): GlucoseTargetRange {
+  if (hba1cTier === 3) {
+    return { population: 'relaxed', fastingLow: 90, fastingHigh: 150, postprandialHigh: 250 };
+  }
+  return { population: 'standard', fastingLow: 80, fastingHigh: 130, postprandialHigh: 180 };
+}
+
+// --- Blood pressure (IGH-V 2025-2026, Fig. 14 / Table 1) ---
+
+function classifyBPStage(systolic: number, diastolic: number): { status: AlertStatus; label: string } | null {
   if (systolic >= 180 || diastolic >= 120) {
-    return {
-      status: 'critical',
-      message: `Hypertensive Crisis: ${systolic}/${diastolic} mmHg`,
-      guideline: 'AHA 2017 / ISH India 2020: Systolic ≥180 or Diastolic ≥120 = Hypertensive Crisis',
-    };
+    return { status: 'critical', label: 'Hypertensive Crisis / Emergency' };
+  }
+  if (diastolic >= 110) {
+    return { status: 'critical', label: 'Severe Hypertension (Stage III)' };
+  }
+  if (systolic >= 160 || diastolic >= 100) {
+    return { status: 'critical', label: 'Moderate Hypertension (Stage II)' };
   }
   if (systolic >= 140 || diastolic >= 90) {
+    return { status: 'warning', label: 'Mild Hypertension (Stage I)' };
+  }
+  return null;
+}
+
+export function analyzeBP(systolic: number, diastolic: number, target: BPTarget): VitalStatus {
+  const stage = classifyBPStage(systolic, diastolic);
+  if (stage) {
     return {
-      status: 'alert' as AlertStatus,
-      message: `Stage 2 Hypertension: ${systolic}/${diastolic} mmHg`,
-      guideline: 'AHA 2017 / ISH India 2020: Systolic ≥140 or Diastolic ≥90 = Stage 2 HTN',
+      status: stage.status,
+      message: `${stage.label}: ${systolic}/${diastolic} mmHg`,
+      guideline:
+        stage.status === 'critical' && (systolic >= 180 || diastolic >= 120)
+          ? 'IGH-V: SBP ≥180 or DBP ≥120 mmHg = urgent alert threshold, immediate escalation'
+          : `IGH-V Step-Care Table 1 (presenting BP severity): ${stage.label}`,
     };
   }
-  if ((systolic >= 130 && systolic <= 139) || (diastolic >= 80 && diastolic <= 89)) {
+
+  if (systolic > target.sys || diastolic > target.dia) {
     return {
       status: 'warning',
-      message: `Stage 1 Hypertension: ${systolic}/${diastolic} mmHg`,
-      guideline: 'AHA 2017 / ISH India 2020: Systolic 130-139 or Diastolic 80-89 = Stage 1 HTN',
+      message: `Above individualized target: ${systolic}/${diastolic} mmHg`,
+      guideline: `IGH-V: patient's target is ${target.label}`,
     };
   }
-  if (systolic >= 120 && systolic <= 129 && diastolic < 80) {
-    return {
-      status: 'warning',
-      message: `Elevated BP: ${systolic}/${diastolic} mmHg`,
-      guideline: 'AHA 2017: Systolic 120-129 with Diastolic <80 = Elevated',
-    };
-  }
+
   return {
     status: 'normal',
-    message: `Normal BP: ${systolic}/${diastolic} mmHg`,
-    guideline: 'AHA 2017 / ISH India 2020: Systolic <120 and Diastolic <80 = Normal',
+    message: `At target: ${systolic}/${diastolic} mmHg`,
+    guideline: `IGH-V: within individualized target (${target.label})`,
   };
 }
 
-// RSSDI + ADA Blood Glucose Guidelines
+// --- Blood glucose (RSSDI Clinical Practice Recommendations 2022/2024, ADA Standards of Care 2026) ---
+
 export function analyzeGlucose(
   glucose: number,
-  glucoseType: 'fasting' | 'post-meal' = 'fasting',
-  _condition?: Condition
+  glucoseType: 'fasting' | 'post-meal',
+  targets: GlucoseTargetRange
 ): VitalStatus {
+  if (glucose < 54) {
+    return {
+      status: 'critical',
+      message: `Level 2 Hypoglycemia (severe): ${glucose} mg/dL — immediate physician contact`,
+      guideline: 'RSSDI/ADA: <54 mg/dL = Level 2 hypoglycemia, immediate escalation (Part 3 safety protocol)',
+    };
+  }
   if (glucose < 70) {
     return {
       status: 'critical',
-      message: `Hypoglycemia: ${glucose} mg/dL`,
-      guideline: 'RSSDI / ADA: Glucose <70 mg/dL = Hypoglycemia (Critical)',
+      message: `Level 1 Hypoglycemia: ${glucose} mg/dL — patient & family notified, no 3-reading wait`,
+      guideline: 'RSSDI/ADA: <70, ≥54 mg/dL = Level 1 hypoglycemia, immediate patient + family alert',
     };
   }
   if (glucose > 300) {
     return {
       status: 'critical',
       message: `Severe Hyperglycemia: ${glucose} mg/dL`,
-      guideline: 'RSSDI / ADA: Glucose >300 mg/dL = Severe Hyperglycemia (Critical)',
+      guideline: 'RSSDI/ADA: >300 mg/dL = severe hyperglycemia, immediate physician review',
     };
   }
+
+  const targetLabel =
+    targets.population === 'relaxed'
+      ? 'relaxed targets (Tier 3 / higher hypoglycemia risk)'
+      : 'standard targets (Tier 1–2)';
 
   if (glucoseType === 'fasting') {
-    if (glucose >= 126) {
-      return {
-        status: 'alert' as AlertStatus,
-        message: `Fasting Diabetes Range: ${glucose} mg/dL`,
-        guideline: 'RSSDI / ADA: Fasting Glucose ≥126 mg/dL = Diabetes Alert',
-      };
-    }
-    if (glucose >= 100) {
+    if (glucose > targets.fastingHigh) {
       return {
         status: 'warning',
-        message: `Fasting Prediabetes: ${glucose} mg/dL`,
-        guideline: 'RSSDI / ADA: Fasting Glucose 100-125 mg/dL = Prediabetes Warning',
+        message: `Above fasting target: ${glucose} mg/dL`,
+        guideline: `RSSDI/ADA: fasting target ${targets.fastingLow}–${targets.fastingHigh} mg/dL (${targetLabel})`,
+      };
+    }
+    if (glucose < targets.fastingLow) {
+      return {
+        status: 'warning',
+        message: `Below fasting target: ${glucose} mg/dL`,
+        guideline: `RSSDI/ADA: fasting target ${targets.fastingLow}–${targets.fastingHigh} mg/dL (${targetLabel})`,
       };
     }
     return {
       status: 'normal',
-      message: `Normal Fasting Glucose: ${glucose} mg/dL`,
-      guideline: 'RSSDI / ADA: Fasting Glucose 70-99 mg/dL = Normal',
-    };
-  } else {
-    // post-meal (2hr)
-    if (glucose >= 200) {
-      return {
-        status: 'alert' as AlertStatus,
-        message: `Post-meal Diabetes Range: ${glucose} mg/dL`,
-        guideline: 'RSSDI / ADA: 2hr Post-meal Glucose ≥200 mg/dL = Diabetes Alert',
-      };
-    }
-    if (glucose >= 140) {
-      return {
-        status: 'warning',
-        message: `Post-meal Prediabetes: ${glucose} mg/dL`,
-        guideline: 'RSSDI / ADA: 2hr Post-meal Glucose 140-199 mg/dL = Warning',
-      };
-    }
-    return {
-      status: 'normal',
-      message: `Normal Post-meal Glucose: ${glucose} mg/dL`,
-      guideline: 'RSSDI / ADA: 2hr Post-meal Glucose <140 mg/dL = Normal',
+      message: `At fasting target: ${glucose} mg/dL`,
+      guideline: `RSSDI/ADA: fasting target ${targets.fastingLow}–${targets.fastingHigh} mg/dL (${targetLabel})`,
     };
   }
-}
 
-// O2 Saturation Guidelines (COPD/HF)
-export function analyzeO2Sat(
-  o2Sat: number,
-  condition?: Condition
-): VitalStatus {
-  const isCOPDorHF = condition === 'COPD' || condition === 'Heart Failure';
-
-  if (o2Sat < 85) {
-    return {
-      status: 'critical',
-      message: `Severe Hypoxia: SpO2 ${o2Sat}%`,
-      guideline: `${isCOPDorHF ? 'GOLD / AHA HF' : 'Standard'} Guidelines: SpO2 <85% = Severe Hypoxia (Critical)`,
-    };
-  }
-  if (o2Sat >= 86 && o2Sat <= 90) {
-    return {
-      status: 'alert' as AlertStatus,
-      message: `Moderate Hypoxia: SpO2 ${o2Sat}%`,
-      guideline: `${isCOPDorHF ? 'GOLD / AHA HF' : 'Standard'} Guidelines: SpO2 86-90% = Moderate Hypoxia (Alert)`,
-    };
-  }
-  if (o2Sat >= 91 && o2Sat <= 94) {
+  // post-meal (2hr)
+  if (glucose > targets.postprandialHigh) {
     return {
       status: 'warning',
-      message: `Mild Hypoxia: SpO2 ${o2Sat}%`,
-      guideline: `${isCOPDorHF ? 'GOLD / AHA HF' : 'Standard'} Guidelines: SpO2 91-94% = Mild Hypoxia (Warning)`,
+      message: `Above postprandial target: ${glucose} mg/dL`,
+      guideline: `RSSDI/ADA: 2hr postprandial target <${targets.postprandialHigh} mg/dL (${targetLabel})`,
     };
   }
   return {
     status: 'normal',
-    message: `Normal SpO2: ${o2Sat}%`,
-    guideline: 'Standard Guidelines: SpO2 ≥95% = Normal',
+    message: `At postprandial target: ${glucose} mg/dL`,
+    guideline: `RSSDI/ADA: 2hr postprandial target <${targets.postprandialHigh} mg/dL (${targetLabel})`,
   };
 }
 
-// Weight Analysis (Heart Failure - AHA HF Guidelines)
-export function analyzeWeight(
-  currentWeight: number,
-  previousReadings: number[],
-  condition?: Condition
-): VitalStatus {
-  if (!previousReadings || previousReadings.length === 0) {
-    return {
-      status: 'normal',
-      message: `Weight: ${currentWeight} kg`,
-      guideline: 'AHA HF Guidelines: Baseline reading',
-    };
-  }
-
-  const prev24h = previousReadings[previousReadings.length - 1];
-  const gain24h = currentWeight - prev24h;
-
-  if (condition === 'Heart Failure') {
-    if (gain24h > 2) {
-      return {
-        status: 'alert' as AlertStatus,
-        message: `Weight gain >2kg in 24h: +${gain24h.toFixed(1)} kg`,
-        guideline: 'AHA HF Guidelines: Weight gain >2kg/24h = Alert (fluid retention risk)',
-      };
-    }
-
-    if (previousReadings.length >= 2) {
-      const prev48h = previousReadings[previousReadings.length - 2];
-      const gain48h = currentWeight - prev48h;
-      if (gain48h > 2.5) {
-        return {
-          status: 'critical',
-          message: `Weight gain >2.5kg in 48h: +${gain48h.toFixed(1)} kg`,
-          guideline: 'AHA HF Guidelines: Weight gain >2.5kg/48h = Critical (decompensation risk)',
-        };
-      }
-    }
-  }
-
-  return {
-    status: 'normal',
-    message: `Weight: ${currentWeight} kg (stable)`,
-    guideline: 'AHA HF Guidelines: Weight stable (no significant gain)',
-  };
-}
-
-// Main exported function for analyzing any vital
-export function analyzeVital(
-  type: 'BP' | 'Glucose' | 'O2Sat' | 'Weight',
-  value: number | { systolic: number; diastolic: number },
-  condition?: Condition,
-  previousReadings?: number[],
-  glucoseType?: 'fasting' | 'post-meal'
-): VitalStatus {
-  switch (type) {
-    case 'BP': {
-      const bp = value as { systolic: number; diastolic: number };
-      return analyzeBP(bp.systolic, bp.diastolic, condition);
-    }
-    case 'Glucose':
-      return analyzeGlucose(value as number, glucoseType || 'fasting', condition);
-    case 'O2Sat':
-      return analyzeO2Sat(value as number, condition);
-    case 'Weight':
-      return analyzeWeight(value as number, previousReadings || [], condition);
-    default:
-      return {
-        status: 'normal',
-        message: 'Unknown vital type',
-        guideline: 'N/A',
-      };
-  }
-}
-
-// Map internal status to AlertStatus
+// Map internal status to AlertStatus (kept for compatibility with any 'alert' string usages)
 export function toAlertStatus(status: string): AlertStatus {
-  if (status === 'alert') return 'warning'; // map 'alert' -> 'warning' for display
+  if (status === 'alert') return 'warning';
   return status as AlertStatus;
 }

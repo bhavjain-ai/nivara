@@ -1,5 +1,6 @@
-import { Patient, Alert } from '@/types';
+import { Patient, VitalReading, SmartGoal, OutreachCall } from '@/types';
 import { getPatientAlertLevel, getLatestVitalsSummary } from './vitals-analyzer';
+import { getHbA1cTierInfo } from './guidelines';
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -15,252 +16,234 @@ function minutesAgo(n: number): string {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
+// Daily home BP readings per IGH-V HBPM protocol
+function dailyBP(values: [number, number][]): VitalReading[] {
+  return values.map(([sys, dia], i) => ({
+    date: daysAgo(values.length - 1 - i),
+    systolic: sys,
+    diastolic: dia,
+  }));
+}
+
+// Sparse SMBG per RSSDI Table 2/3 (not a flat daily rule) — pass [daysAgoOffset, glucose, type][]
+function glucoseReadings(entries: [number, number, 'fasting' | 'post-meal'][]): VitalReading[] {
+  return entries.map(([offset, glucose, glucoseType]) => ({
+    date: daysAgo(offset),
+    glucose,
+    glucoseType,
+  }));
+}
+
+function mergeVitals(...groups: VitalReading[][]): VitalReading[] {
+  return groups.flat().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
 const rawPatients: Omit<Patient, 'alertStatus'>[] = [
-  // --- COPD Patients (3) ---
+  // --- Hypertension only ---
   {
     id: 'P001',
     name: 'Rajesh Kumar',
     age: 67,
     gender: 'Male',
-    condition: 'COPD',
+    conditions: ['Hypertension'],
+    comorbidities: ['Established CVD'],
     city: 'Mumbai',
     phoneNumber: '+91-98201-11234',
     physicianName: 'Dr. Anita Desai',
-    enrollmentDate: '2024-01-15',
-    treatmentStep: 2,
+    enrollmentDate: daysAgo(70),
+    htnStep: 2,
+    diabetesStep: null,
+    hba1cTier: null,
+    hba1cReadings: [],
     medications: [
-      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB' as const, dose: '40 mg', frequency: 'Once daily', startDate: '2024-01-15' },
-      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-01-15' },
-      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic' as const, dose: '12.5 mg', frequency: 'Once daily', startDate: '2024-03-01' },
+      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB', dose: '80 mg', frequency: 'Once daily', startDate: daysAgo(70) },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB', dose: '5 mg', frequency: 'Once daily', startDate: daysAgo(70) },
+      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic', dose: '6.25 mg', frequency: 'Once daily', startDate: daysAgo(35) },
     ],
     lastReadingTime: minutesAgo(12),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      o2Sat: [88, 87, 89, 86, 88, 85, 87, 88, 84, 86, 85, 87, 84, 83][i],
-      systolic: [138, 142, 140, 145, 138, 142, 144, 141, 139, 143, 146, 140, 144, 147][i],
-      diastolic: [88, 90, 87, 92, 88, 90, 91, 89, 88, 91, 93, 89, 91, 94][i],
-      heartRate: [88, 92, 90, 94, 88, 92, 93, 91, 89, 93, 95, 91, 93, 96][i],
-      weight: [72, 72.2, 72.1, 72.3, 72.5, 72.4, 72.6, 72.5, 72.8, 72.7, 73, 72.9, 73.2, 73.5][i],
-    })),
+    vitals: dailyBP([
+      [148, 92], [152, 95], [149, 93], [156, 98], [151, 94], [158, 100], [162, 102],
+      [155, 96], [150, 93], [165, 104], [172, 108], [168, 106], [178, 114], [182, 116],
+    ]),
     alerts: [
       {
         id: 'A001',
         patientId: 'P001',
         patientName: 'Rajesh Kumar',
-        type: 'O2 Sat',
-        message: 'SpO2 dropped to 83% - severe hypoxia detected',
+        type: 'BP',
+        message: 'Severe Hypertension (Stage III): BP 182/116 mmHg',
         severity: 'critical',
         timestamp: new Date(Date.now() - 12 * 60000).toISOString(),
         acknowledged: false,
       },
     ],
+    coachingTier: 'High-touch',
+    coachingCallsCompleted: 8,
+    coachingCallsTarget: 14,
+    outreachLog: [
+      outreachCall({ id: 'O001-3', offset: 3, coordinatorName: 'Fathima Rasheed', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 18, topics: ['Diet', 'Medication Adherence'], dietNotes: 'Still eating restaurant food 4-5x/week — sodium likely well above 2g/day target. Provided low-sodium thali swap list.', medAdherenceNotes: 'Missed evening Chlorthalidone dose twice this week — moved pillbox next to dinner plate as a cue.', summary: 'BP trending up on home readings; reinforced salt-reduction goal and adherence cue. Flagged rising trend to physician.' }),
+      outreachCall({ id: 'O001-10', offset: 10, coordinatorName: 'Fathima Rasheed', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 15, topics: ['Diet', 'Physical Activity'], dietNotes: 'Reports high-salt snacking in the evenings.', exerciseNotes: 'Walking 15 min/day, below 30 min goal — cites knee discomfort.', summary: 'Discussed low-impact alternatives to walking; set interim 20 min/day target.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G001-1', category: 'Diet', description: 'Cut down added salt in diet over the next 2 weeks — no extra salt at the table, limit outside food to 2x/week', setDate: daysAgo(24), targetDate: daysAgo(10), status: 'At Risk', progressNote: 'Outside-food frequency still 4-5x/week at last check-in.' }),
+      goal({ id: 'G001-2', category: 'Medication Adherence', description: 'Take evening Chlorthalidone at the same time as dinner, 7 days/week', setDate: daysAgo(24), targetDate: daysAgo(3), status: 'Partially Met', progressNote: 'Pillbox-by-plate cue introduced this week.' }),
+      goal({ id: 'G001-3', category: 'Physical Activity', description: 'Walk 20 minutes/day, 5 days/week', setDate: daysAgo(10), targetDate: daysAgo(-4), status: 'On Track' }),
+    ],
   },
   {
     id: 'P002',
-    name: 'Meena Iyer',
-    age: 58,
+    name: 'Priya Sharma',
+    age: 52,
     gender: 'Female',
-    condition: 'COPD',
-    city: 'Chennai',
-    phoneNumber: '+91-94440-22345',
+    conditions: ['Hypertension'],
+    comorbidities: [],
+    city: 'Delhi',
+    phoneNumber: '+91-98110-44567',
     physicianName: 'Dr. Anita Desai',
-    enrollmentDate: '2024-02-10',
-    treatmentStep: 1,
+    enrollmentDate: daysAgo(60),
+    htnStep: 1,
+    diabetesStep: null,
+    hba1cTier: null,
+    hba1cReadings: [],
     medications: [
-      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-02-10' },
-      { name: 'Indapamide', genericName: 'Indapamide', drugClass: 'Diuretic' as const, dose: '1.5 mg', frequency: 'Once daily', startDate: '2024-02-10' },
+      { name: 'Losartan', genericName: 'Losartan', drugClass: 'ARB', dose: '50 mg', frequency: 'Once daily', startDate: daysAgo(60) },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB', dose: '5 mg', frequency: 'Once daily', startDate: daysAgo(60) },
     ],
-    lastReadingTime: minutesAgo(35),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      o2Sat: [93, 94, 92, 93, 94, 93, 92, 94, 93, 92, 93, 94, 93, 92][i],
-      systolic: [122, 124, 120, 126, 122, 124, 126, 123, 121, 125, 127, 122, 124, 126][i],
-      diastolic: [78, 80, 77, 81, 78, 80, 81, 79, 77, 80, 82, 78, 80, 81][i],
-      heartRate: [78, 80, 76, 82, 78, 80, 82, 79, 77, 81, 83, 78, 80, 82][i],
-      weight: [56, 56.2, 56.1, 56, 56.3, 56.2, 56.4, 56.3, 56.5, 56.4, 56.6, 56.5, 56.7, 56.8][i],
-    })),
+    lastReadingTime: minutesAgo(8),
+    vitals: dailyBP([
+      [158, 98], [162, 102], [155, 96], [168, 106], [160, 100], [165, 104], [170, 108],
+      [162, 102], [158, 98], [172, 110], [180, 118], [175, 112], [182, 120], [188, 124],
+    ]),
     alerts: [
       {
         id: 'A002',
         patientId: 'P002',
-        patientName: 'Meena Iyer',
-        type: 'O2 Sat',
-        message: 'SpO2 at 92% - mild hypoxia, monitoring required',
-        severity: 'warning',
-        timestamp: new Date(Date.now() - 35 * 60000).toISOString(),
-        acknowledged: false,
-      },
-    ],
-  },
-  {
-    id: 'P003',
-    name: 'Subramaniam Pillai',
-    age: 72,
-    gender: 'Male',
-    condition: 'COPD',
-    city: 'Hyderabad',
-    phoneNumber: '+91-99000-33456',
-    physicianName: 'Dr. Vikram Nair',
-    enrollmentDate: '2023-11-20',
-    treatmentStep: 1,
-    medications: [
-      { name: 'Ramipril', genericName: 'Ramipril', drugClass: 'ACE' as const, dose: '2.5 mg', frequency: 'Once daily', startDate: '2024-03-05' },
-      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-03-05' },
-    ],
-    lastReadingTime: minutesAgo(90),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      o2Sat: [96, 97, 96, 97, 95, 96, 97, 96, 95, 97, 96, 97, 96, 95][i],
-      systolic: [118, 120, 116, 122, 118, 120, 122, 119, 117, 121, 123, 118, 120, 122][i],
-      diastolic: [74, 76, 73, 78, 74, 76, 78, 75, 73, 77, 79, 74, 76, 78][i],
-      heartRate: [72, 74, 70, 76, 72, 74, 76, 73, 71, 75, 77, 72, 74, 76][i],
-      weight: [68, 68.1, 68, 68.2, 68.1, 68.3, 68.2, 68.4, 68.3, 68.5, 68.4, 68.6, 68.5, 68.7][i],
-    })),
-    alerts: [],
-  },
-
-  // --- Hypertension Patients (3) ---
-  {
-    id: 'P004',
-    name: 'Priya Sharma',
-    age: 52,
-    gender: 'Female',
-    condition: 'Hypertension',
-    city: 'Delhi',
-    phoneNumber: '+91-98110-44567',
-    physicianName: 'Dr. Anita Desai',
-    enrollmentDate: '2024-03-05',
-    treatmentStep: 2,
-    medications: [
-      { name: 'Losartan', genericName: 'Losartan', drugClass: 'ARB' as const, dose: '50 mg', frequency: 'Once daily', startDate: '2024-01-20' },
-      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-01-20' },
-      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic' as const, dose: '12.5 mg', frequency: 'Once daily', startDate: '2024-02-15' },
-    ],
-    lastReadingTime: minutesAgo(8),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      systolic: [158, 162, 155, 168, 160, 165, 170, 162, 158, 172, 180, 175, 182, 188][i],
-      diastolic: [98, 102, 96, 106, 100, 104, 108, 102, 98, 110, 118, 112, 120, 124][i],
-      heartRate: [84, 88, 82, 90, 86, 88, 92, 88, 84, 92, 96, 90, 94, 98][i],
-      weight: [74, 74.2, 74.1, 74.3, 74.2, 74.4, 74.3, 74.5, 74.4, 74.6, 74.5, 74.7, 74.6, 74.8][i],
-    })),
-    alerts: [
-      {
-        id: 'A003',
-        patientId: 'P004',
         patientName: 'Priya Sharma',
         type: 'BP',
-        message: 'Hypertensive Crisis: BP 188/124 mmHg - immediate attention required',
+        message: 'Hypertensive Crisis / Emergency: BP 188/124 mmHg — immediate attention required',
         severity: 'critical',
         timestamp: new Date(Date.now() - 8 * 60000).toISOString(),
         acknowledged: false,
       },
     ],
+    coachingTier: 'High-touch',
+    coachingCallsCompleted: 6,
+    coachingCallsTarget: 14,
+    outreachLog: [
+      outreachCall({ id: 'O002-2', offset: 2, coordinatorName: 'Fathima Rasheed', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 20, topics: ['Diet', 'Medication Adherence', 'Sleep & Stress'], dietNotes: 'High work-stress week, ordered in most nights — high sodium.', medAdherenceNotes: 'Adherent, no missed doses.', summary: 'BP crisis reading discussed; escalated to Nivara physician same call. Reinforced stress-linked eating pattern.' }),
+      outreachCall({ id: 'O002-1', offset: 1, coordinatorName: 'Dr. Vikram Nair (backup physician)', coordinatorRole: 'Nurse', callType: 'Nurse Medication Check-in', durationMin: 10, topics: ['Medication Adherence'], medAdherenceNotes: 'Confirmed both current medications taken as prescribed this morning.', summary: 'Follow-up nurse call after crisis-level reading to confirm adherence before physician-directed dose change takes effect.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G002-1', category: 'Diet', description: 'Cut down added salt in diet over the next 2 weeks — cook dinner at home at least 5 nights/week', setDate: daysAgo(20), targetDate: daysAgo(6), status: 'At Risk', progressNote: 'Work travel disrupted home cooking this week.' }),
+      goal({ id: 'G002-2', category: 'Physical Activity', description: '150 min/week moderate activity (brisk walking)', setDate: daysAgo(20), targetDate: daysAgo(-8), status: 'On Track' }),
+    ],
   },
   {
-    id: 'P005',
+    id: 'P003',
     name: 'Anand Patel',
     age: 61,
     gender: 'Male',
-    condition: 'Hypertension',
+    conditions: ['Hypertension'],
+    comorbidities: [],
     city: 'Ahmedabad',
     phoneNumber: '+91-98250-55678',
     physicianName: 'Dr. Vikram Nair',
-    enrollmentDate: '2024-01-28',
-    treatmentStep: 3,
+    enrollmentDate: daysAgo(90),
+    htnStep: 3,
+    diabetesStep: null,
+    hba1cTier: null,
+    hba1cReadings: [],
     medications: [
-      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB' as const, dose: '80 mg', frequency: 'Once daily', startDate: '2023-11-10' },
-      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '10 mg', frequency: 'Once daily', startDate: '2023-11-10' },
-      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic' as const, dose: '25 mg', frequency: 'Once daily', startDate: '2023-12-01' },
+      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB', dose: '80 mg', frequency: 'Once daily', startDate: daysAgo(90) },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB', dose: '10 mg', frequency: 'Once daily', startDate: daysAgo(90) },
+      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic', dose: '12.5 mg', frequency: 'Once daily', startDate: daysAgo(60) },
     ],
     lastReadingTime: minutesAgo(45),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      systolic: [142, 145, 140, 148, 142, 146, 144, 142, 145, 143, 141, 144, 142, 140][i],
-      diastolic: [90, 93, 88, 95, 90, 93, 92, 90, 93, 91, 89, 92, 90, 88][i],
-      heartRate: [76, 78, 74, 80, 76, 78, 77, 76, 78, 77, 75, 77, 76, 74][i],
-      weight: [82, 82.2, 82.1, 82.3, 82.2, 82.4, 82.3, 82.5, 82.4, 82.6, 82.5, 82.7, 82.6, 82.8][i],
-    })),
-    alerts: [
-      {
-        id: 'A004',
-        patientId: 'P005',
-        patientName: 'Anand Patel',
-        type: 'BP',
-        message: 'Stage 2 Hypertension: BP 148/95 mmHg',
-        severity: 'warning',
-        timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
-        acknowledged: false,
-      },
+    vitals: dailyBP([
+      [142, 90], [145, 92], [140, 88], [138, 87], [142, 89], [136, 86], [134, 85],
+      [138, 87], [135, 86], [133, 85], [131, 84], [134, 85], [132, 84], [130, 83],
+    ]),
+    alerts: [],
+    coachingTier: 'Moderate-touch',
+    coachingCallsCompleted: 5,
+    coachingCallsTarget: 8,
+    outreachLog: [
+      outreachCall({ id: 'O003-6', offset: 6, coordinatorName: 'Rohan Bhatt', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 16, topics: ['Diet', 'Physical Activity'], dietNotes: 'Sodium intake down since switching to home-cooked Gujarati thali with less pickle/papad.', exerciseNotes: 'Walking 25 min/day, 5 days/week — consistent.', summary: 'BP trending down toward target on max triple therapy; positive reinforcement given.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G003-1', category: 'Diet', description: 'Limit pickle/papad (high-sodium) to 2x/week', setDate: daysAgo(28), targetDate: daysAgo(14), status: 'Met', progressNote: 'Down to 1-2x/week consistently.' }),
+      goal({ id: 'G003-2', category: 'Physical Activity', description: 'Walk 25 min/day, 5 days/week', setDate: daysAgo(28), targetDate: daysAgo(-2), status: 'On Track' }),
     ],
   },
   {
-    id: 'P006',
+    id: 'P004',
     name: 'Kavitha Reddy',
     age: 48,
     gender: 'Female',
-    condition: 'Hypertension',
+    conditions: ['Hypertension'],
+    comorbidities: [],
     city: 'Bangalore',
     phoneNumber: '+91-99800-66789',
     physicianName: 'Dr. Anita Desai',
-    enrollmentDate: '2024-04-12',
-    treatmentStep: 1,
+    enrollmentDate: daysAgo(45),
+    htnStep: 1,
+    diabetesStep: null,
+    hba1cTier: null,
+    hba1cReadings: [],
     medications: [
-      { name: 'Perindopril', genericName: 'Perindopril', drugClass: 'ACE' as const, dose: '4 mg', frequency: 'Once daily', startDate: '2024-04-01' },
-      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-04-01' },
+      { name: 'Perindopril', genericName: 'Perindopril', drugClass: 'ACE', dose: '4 mg', frequency: 'Once daily', startDate: daysAgo(45) },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB', dose: '5 mg', frequency: 'Once daily', startDate: daysAgo(45) },
     ],
     lastReadingTime: minutesAgo(120),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      systolic: [128, 130, 126, 132, 128, 130, 132, 129, 127, 131, 133, 128, 130, 132][i],
-      diastolic: [82, 84, 80, 86, 82, 84, 86, 83, 81, 85, 87, 82, 84, 86][i],
-      heartRate: [70, 72, 68, 74, 70, 72, 74, 71, 69, 73, 75, 70, 72, 74][i],
-      weight: [62, 62.2, 62.1, 62.3, 62.2, 62.4, 62.3, 62.5, 62.4, 62.6, 62.5, 62.7, 62.6, 62.8][i],
-    })),
-    alerts: [
-      {
-        id: 'A005',
-        patientId: 'P006',
-        patientName: 'Kavitha Reddy',
-        type: 'BP',
-        message: 'Elevated BP: Stage 1 Hypertension detected',
-        severity: 'warning',
-        timestamp: new Date(Date.now() - 120 * 60000).toISOString(),
-        acknowledged: true,
-      },
+    vitals: dailyBP([
+      [128, 82], [130, 84], [126, 80], [124, 79], [128, 81], [122, 78], [125, 80],
+      [123, 78], [121, 77], [124, 79], [120, 76], [122, 78], [119, 76], [121, 77],
+    ]),
+    alerts: [],
+    coachingTier: 'Maintenance-touch',
+    coachingCallsCompleted: 2,
+    coachingCallsTarget: 5,
+    outreachLog: [
+      outreachCall({ id: 'O004-18', offset: 18, coordinatorName: 'Rohan Bhatt', coordinatorRole: 'Lifestyle Coach', callType: 'Week 1 Initial Assessment', durationMin: 40, topics: ['Diet', 'Physical Activity', 'Medication Adherence', 'Sleep & Stress'], dietNotes: 'Baseline diet moderate-sodium, home-cooked mostly.', exerciseNotes: 'Sedentary desk job, minimal structured activity at baseline.', summary: 'Baseline assessment complete; BP at target already on dual therapy. Set initial activity goal.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G004-1', category: 'Physical Activity', description: 'Start 20 min brisk walk, 4 days/week, building to 150 min/week', setDate: daysAgo(18), targetDate: daysAgo(4), status: 'Met', progressNote: 'Now walking 30 min, 5 days/week.' }),
     ],
   },
 
-  // --- Diabetes Patients (3) ---
+  // --- Diabetes only ---
   {
-    id: 'P007',
+    id: 'P005',
     name: 'Mohammed Farooq',
     age: 55,
     gender: 'Male',
-    condition: 'Diabetes',
+    conditions: ['Diabetes'],
+    comorbidities: ['Cost-Sensitive'],
     city: 'Hyderabad',
     phoneNumber: '+91-98490-77890',
     physicianName: 'Dr. Sunita Rao',
-    enrollmentDate: '2023-12-01',
-    treatmentStep: 1,
+    enrollmentDate: daysAgo(56),
+    weightKg: 82,
+    htnStep: null,
+    diabetesStep: 'dual',
+    hba1cTier: getHbA1cTierInfo(2),
+    hba1cReadings: [
+      { date: daysAgo(56), value: 9.8 },
+      { date: daysAgo(14), value: 9.4 },
+    ],
     medications: [
-      { name: 'Metformin', genericName: 'Metformin', drugClass: 'Other' as const, dose: '500 mg', frequency: 'Twice daily', startDate: '2023-08-15' },
-      { name: 'Glimepiride', genericName: 'Glimepiride', drugClass: 'Other' as const, dose: '1 mg', frequency: 'Once daily', startDate: '2023-08-15' },
+      { name: 'Metformin (SR)', genericName: 'Metformin', drugClass: 'Biguanide', dose: '1000 mg', frequency: 'Once daily, evening meal', startDate: daysAgo(56) },
+      { name: 'Glimepiride', genericName: 'Glimepiride', drugClass: 'Sulfonylurea', dose: '2 mg', frequency: 'Once daily with breakfast', startDate: daysAgo(28) },
     ],
     lastReadingTime: minutesAgo(20),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      glucose: [142, 156, 138, 168, 145, 160, 175, 155, 148, 178, 320, 290, 340, 310][i],
-      glucoseType: 'fasting' as const,
-      systolic: [132, 135, 130, 138, 132, 136, 134, 132, 135, 133, 131, 134, 132, 130][i],
-      diastolic: [84, 86, 82, 88, 84, 86, 85, 84, 86, 85, 83, 85, 84, 82][i],
-      heartRate: [78, 80, 76, 82, 78, 80, 79, 78, 80, 79, 77, 79, 78, 76][i],
-      weight: [88, 88.2, 88.1, 88.3, 88.2, 88.4, 88.3, 88.5, 88.4, 88.6, 88.5, 88.7, 88.6, 88.8][i],
-    })),
+    vitals: glucoseReadings([
+      [13, 168, 'fasting'], [11, 175, 'fasting'], [9, 182, 'fasting'], [7, 190, 'fasting'],
+      [5, 245, 'fasting'], [3, 288, 'fasting'], [1, 340, 'fasting'], [0, 320, 'post-meal'],
+    ]),
     alerts: [
       {
-        id: 'A006',
-        patientId: 'P007',
+        id: 'A005',
+        patientId: 'P005',
         patientName: 'Mohammed Farooq',
         type: 'Glucose',
         message: 'Severe Hyperglycemia: Fasting glucose 340 mg/dL',
@@ -269,189 +252,298 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
         acknowledged: false,
       },
     ],
+    coachingTier: 'High-touch',
+    coachingCallsCompleted: 7,
+    coachingCallsTarget: 14,
+    outreachLog: [
+      outreachCall({ id: 'O005-1', offset: 1, coordinatorName: 'Divya Menon', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 20, topics: ['Diet', 'Medication Adherence'], dietNotes: 'Skipping breakfast most days, then large carb-heavy lunch — glucose spikes correlate.', medAdherenceNotes: 'Reports missing Glimepiride 3x this week when breakfast skipped (patient self-adjusting to avoid hypo, unaware sulfonylurea still needs food timing guidance).', summary: 'Sustained fasting glucose ≥130 mg/dL flagged to physician; medication-timing education given; physician alert already sent for today\'s 340 mg/dL reading.' }),
+      outreachCall({ id: 'O005-8', offset: 8, coordinatorName: 'Divya Menon', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 18, topics: ['Diet', 'Physical Activity'], dietNotes: 'Frequent sugary tea (5-6 cups/day).', summary: 'Discussed swapping to sugar-free tea; cost-sensitive snack alternatives provided.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G005-1', category: 'Diet', description: 'Eat breakfast daily instead of skipping, to stabilize glucose swings', setDate: daysAgo(22), targetDate: daysAgo(8), status: 'Not Met', progressNote: 'Still skipping breakfast 4-5x/week.' }),
+      goal({ id: 'G005-2', category: 'Medication Adherence', description: 'Take Glimepiride with breakfast every day, no self-adjusting without calling the coach first', setDate: daysAgo(8), targetDate: daysAgo(-6), status: 'At Risk' }),
+    ],
   },
   {
-    id: 'P008',
+    id: 'P006',
     name: 'Saranya Krishnan',
     age: 49,
     gender: 'Female',
-    condition: 'Diabetes',
+    conditions: ['Diabetes'],
+    comorbidities: [],
     city: 'Chennai',
     phoneNumber: '+91-94890-88901',
     physicianName: 'Dr. Sunita Rao',
-    enrollmentDate: '2024-02-20',
-    treatmentStep: 1,
+    enrollmentDate: daysAgo(50),
+    weightKg: 64,
+    htnStep: null,
+    diabetesStep: 'metformin',
+    hba1cTier: getHbA1cTierInfo(1),
+    hba1cReadings: [
+      { date: daysAgo(50), value: 6.9 },
+      { date: daysAgo(10), value: 6.6 },
+    ],
     medications: [
-      { name: 'Metformin', genericName: 'Metformin', drugClass: 'Other' as const, dose: '1000 mg', frequency: 'Twice daily', startDate: '2023-10-20' },
-      { name: 'Sitagliptin', genericName: 'Sitagliptin', drugClass: 'Other' as const, dose: '100 mg', frequency: 'Once daily', startDate: '2024-01-10' },
-      { name: 'Ramipril', genericName: 'Ramipril', drugClass: 'ACE' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2024-01-10' },
+      { name: 'Metformin (SR)', genericName: 'Metformin', drugClass: 'Biguanide', dose: '1500 mg', frequency: 'Once daily, evening meal', startDate: daysAgo(50) },
     ],
     lastReadingTime: minutesAgo(60),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      glucose: [118, 122, 116, 126, 118, 124, 120, 118, 124, 122, 116, 120, 118, 116][i],
-      glucoseType: 'fasting' as const,
-      systolic: [124, 126, 122, 128, 124, 126, 128, 125, 123, 127, 129, 124, 126, 128][i],
-      diastolic: [78, 80, 76, 82, 78, 80, 82, 79, 77, 81, 83, 78, 80, 82][i],
-      heartRate: [72, 74, 70, 76, 72, 74, 76, 73, 71, 75, 77, 72, 74, 76][i],
-      weight: [64, 64.2, 64.1, 64.3, 64.2, 64.4, 64.3, 64.5, 64.4, 64.6, 64.5, 64.7, 64.6, 64.8][i],
-    })),
+    vitals: glucoseReadings([
+      [12, 118, 'fasting'], [10, 128, 'post-meal'], [9, 122, 'fasting'], [6, 132, 'post-meal'],
+      [5, 116, 'fasting'], [2, 124, 'post-meal'], [1, 112, 'fasting'],
+    ]),
+    alerts: [],
+    coachingTier: 'Maintenance-touch',
+    coachingCallsCompleted: 2,
+    coachingCallsTarget: 5,
+    outreachLog: [
+      outreachCall({ id: 'O006-16', offset: 16, coordinatorName: 'Divya Menon', coordinatorRole: 'Lifestyle Coach', callType: 'Week 1 Initial Assessment', durationMin: 35, topics: ['Diet', 'Physical Activity', 'Medication Adherence'], dietNotes: 'Rice-heavy diet, moderate portions.', exerciseNotes: 'Yoga 2x/week at baseline.', summary: 'Tier 1 HbA1c target confirmed; already close to target on metformin alone.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G006-1', category: 'Diet', description: 'Swap white rice for brown rice/millets at dinner, 5 nights/week', setDate: daysAgo(16), targetDate: daysAgo(2), status: 'Met', progressNote: 'Consistent for 3 weeks, reports better post-dinner readings.' }),
+    ],
+  },
+  {
+    id: 'P007',
+    name: 'Ramesh Gupta',
+    age: 63,
+    gender: 'Male',
+    conditions: ['Diabetes'],
+    comorbidities: ['Higher Hypoglycemia Risk'],
+    city: 'Delhi',
+    phoneNumber: '+91-98100-99012',
+    physicianName: 'Dr. Vikram Nair',
+    enrollmentDate: daysAgo(75),
+    weightKg: 78,
+    htnStep: null,
+    diabetesStep: 'insulin-basal',
+    hba1cTier: getHbA1cTierInfo(2),
+    hba1cReadings: [
+      { date: daysAgo(75), value: 8.6 },
+      { date: daysAgo(21), value: 7.3 },
+    ],
+    medications: [
+      { name: 'Insulin Glargine', genericName: 'Insulin Glargine', drugClass: 'Insulin', dose: '18 units', frequency: 'Once daily, bedtime', startDate: daysAgo(40) },
+      { name: 'Metformin (SR)', genericName: 'Metformin', drugClass: 'Biguanide', dose: '1000 mg', frequency: 'Once daily, evening meal', startDate: daysAgo(75) },
+    ],
+    lastReadingTime: minutesAgo(180),
+    vitals: glucoseReadings([
+      [12, 98, 'fasting'], [10, 102, 'fasting'], [8, 95, 'fasting'], [6, 105, 'fasting'],
+      [4, 92, 'fasting'], [2, 99, 'fasting'], [0, 96, 'fasting'],
+    ]),
+    alerts: [],
+    coachingTier: 'High-touch',
+    coachingCallsCompleted: 10,
+    coachingCallsTarget: 14,
+    outreachLog: [
+      outreachCall({ id: 'O007-4', offset: 4, coordinatorName: 'Divya Menon', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 15, topics: ['Medication Adherence', 'Diet'], medAdherenceNotes: 'Consistent bedtime glargine injection, correct technique confirmed via video call.', dietNotes: 'Stable meal timing, no recent hypoglycemia symptoms reported.', summary: 'Insulin patient — weekly cadence maintained per High-touch tier. FBG well controlled, no titration change needed this week.' }),
+      outreachCall({ id: 'O007-11', offset: 11, coordinatorName: 'Nurse Kavya Suresh', coordinatorRole: 'Nurse', callType: 'Nurse Medication Check-in', durationMin: 12, topics: ['Medication Adherence', 'Device/Monitoring Support'], medAdherenceNotes: 'Reviewed insulin pen storage and rotation of injection sites.', summary: 'Routine nurse check-in on insulin technique and cold-chain storage during a home power outage.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G007-1', category: 'Diet', description: 'Keep dinner timing within a consistent 1-hour window to match insulin dosing', setDate: daysAgo(30), targetDate: daysAgo(16), status: 'Met' }),
+      goal({ id: 'G007-2', category: 'Physical Activity', description: 'Evening walk 15 min after dinner, 5 days/week (post-prandial glucose support)', setDate: daysAgo(16), targetDate: daysAgo(2), status: 'Partially Met', progressNote: 'Averaging 3 days/week.' }),
+    ],
+  },
+
+  // --- Hypertension + Diabetes (combined) ---
+  {
+    id: 'P008',
+    name: 'Lakshmi Venkataraman',
+    age: 70,
+    gender: 'Female',
+    conditions: ['Hypertension', 'Diabetes'],
+    comorbidities: ['Established CVD', 'CKD', 'Elderly'],
+    city: 'Bangalore',
+    phoneNumber: '+91-80000-10123',
+    physicianName: 'Dr. Sunita Rao',
+    enrollmentDate: daysAgo(65),
+    weightKg: 58,
+    htnStep: 2,
+    diabetesStep: 'dual',
+    hba1cTier: getHbA1cTierInfo(3),
+    hba1cReadings: [
+      { date: daysAgo(65), value: 8.9 },
+      { date: daysAgo(21), value: 8.3 },
+    ],
+    medications: [
+      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB', dose: '40 mg', frequency: 'Once daily', startDate: daysAgo(65) },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB', dose: '5 mg', frequency: 'Once daily', startDate: daysAgo(65) },
+      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic', dose: '6.25 mg', frequency: 'Once daily', startDate: daysAgo(30) },
+      { name: 'Metformin (SR)', genericName: 'Metformin', drugClass: 'Biguanide', dose: '1000 mg', frequency: 'Once daily, evening meal', startDate: daysAgo(65) },
+      { name: 'Empagliflozin', genericName: 'Empagliflozin', drugClass: 'SGLT2i', dose: '10 mg', frequency: 'Once daily', startDate: daysAgo(30) },
+    ],
+    lastReadingTime: minutesAgo(15),
+    vitals: mergeVitals(
+      dailyBP([
+        [140, 88], [144, 91], [138, 86], [148, 94], [142, 89], [146, 93], [150, 96],
+        [148, 94], [152, 98], [155, 100], [158, 104], [162, 108], [168, 112], [172, 116],
+      ]),
+      glucoseReadings([[6, 148, 'fasting'], [3, 155, 'fasting'], [1, 162, 'fasting'], [0, 158, 'fasting']])
+    ),
     alerts: [
       {
-        id: 'A007',
+        id: 'A008',
         patientId: 'P008',
-        patientName: 'Saranya Krishnan',
-        type: 'Glucose',
-        message: 'Prediabetes range: Fasting glucose 116 mg/dL',
-        severity: 'warning',
-        timestamp: new Date(Date.now() - 60 * 60000).toISOString(),
+        patientName: 'Lakshmi Venkataraman',
+        type: 'BP',
+        message: 'Severe Hypertension (Stage III): BP 172/116 mmHg',
+        severity: 'critical',
+        timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
         acknowledged: false,
       },
+    ],
+    coachingTier: 'High-touch',
+    coachingCallsCompleted: 9,
+    coachingCallsTarget: 14,
+    outreachLog: [
+      outreachCall({ id: 'O008-2', offset: 2, coordinatorName: 'Fathima Rasheed', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 20, topics: ['Diet', 'Medication Adherence', 'Physical Activity'], dietNotes: 'Family cooking is high-salt; daughter-in-law now included in calls to help modify recipes.', medAdherenceNotes: 'Adherent to all 5 medications, uses a weekly pillbox.', exerciseNotes: 'Limited mobility, chair-based exercises introduced.', summary: 'Both BP and fasting glucose trending above individualized (relaxed, Tier 3) targets — flagged for physician review this call.' }),
+      outreachCall({ id: 'O008-9', offset: 9, coordinatorName: 'Nurse Kavya Suresh', coordinatorRole: 'Nurse', callType: 'Nurse Medication Check-in', durationMin: 10, topics: ['Medication Adherence', 'Device/Monitoring Support'], medAdherenceNotes: 'Confirmed correct BP cuff placement after a series of unusually high readings.', summary: 'Technique check ruled out cuff-fit as the cause of elevated readings.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G008-1', category: 'Diet', description: 'Cut down added salt in diet over the next 2 weeks — family meals cooked with ≤1/2 tsp salt per dish', setDate: daysAgo(12), targetDate: daysAgo(-2), status: 'At Risk', progressNote: 'Daughter-in-law onboarded to help; too early to confirm change.' }),
+      goal({ id: 'G008-2', category: 'Physical Activity', description: 'Chair-based exercises 10 min/day, 4 days/week', setDate: daysAgo(12), targetDate: daysAgo(-2), status: 'On Track' }),
     ],
   },
   {
     id: 'P009',
-    name: 'Ramesh Gupta',
-    age: 63,
-    gender: 'Male',
-    condition: 'Diabetes',
-    city: 'Delhi',
-    phoneNumber: '+91-98100-99012',
-    physicianName: 'Dr. Vikram Nair',
-    enrollmentDate: '2023-10-15',
-    treatmentStep: 1,
-    medications: [
-      { name: 'Insulin Glargine', genericName: 'Insulin Glargine', drugClass: 'Other' as const, dose: '20 units', frequency: 'Once daily (bedtime)', startDate: '2024-02-01' },
-      { name: 'Metformin', genericName: 'Metformin', drugClass: 'Other' as const, dose: '500 mg', frequency: 'Twice daily', startDate: '2024-02-01' },
-    ],
-    lastReadingTime: minutesAgo(180),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      glucose: [95, 98, 92, 102, 95, 100, 96, 95, 99, 97, 93, 96, 95, 93][i],
-      glucoseType: 'fasting' as const,
-      systolic: [118, 120, 116, 122, 118, 120, 122, 119, 117, 121, 123, 118, 120, 122][i],
-      diastolic: [76, 78, 74, 80, 76, 78, 80, 77, 75, 79, 81, 76, 78, 80][i],
-      heartRate: [68, 70, 66, 72, 68, 70, 72, 69, 67, 71, 73, 68, 70, 72][i],
-      weight: [78, 78.1, 78, 78.2, 78.1, 78.3, 78.2, 78.4, 78.3, 78.5, 78.4, 78.6, 78.5, 78.7][i],
-    })),
-    alerts: [],
-  },
-
-  // --- Heart Failure Patients (3) ---
-  {
-    id: 'P010',
-    name: 'Lakshmi Venkataraman',
-    age: 70,
-    gender: 'Female',
-    condition: 'Heart Failure',
-    city: 'Bangalore',
-    phoneNumber: '+91-80000-10123',
-    physicianName: 'Dr. Sunita Rao',
-    enrollmentDate: '2023-09-01',
-    treatmentStep: 2,
-    medications: [
-      { name: 'Ramipril', genericName: 'Ramipril', drugClass: 'ACE' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2023-12-01' },
-      { name: 'Bisoprolol', genericName: 'Bisoprolol', drugClass: 'BetaBlocker' as const, dose: '5 mg', frequency: 'Once daily', startDate: '2023-12-01' },
-      { name: 'Furosemide', genericName: 'Furosemide', drugClass: 'Diuretic' as const, dose: '40 mg', frequency: 'Once daily', startDate: '2023-12-01' },
-    ],
-    lastReadingTime: minutesAgo(15),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      weight: [58, 58.5, 59, 59.2, 59.8, 60.2, 60.5, 61, 61.8, 62.5, 63.2, 64, 65, 67.5][i],
-      o2Sat: [92, 91, 93, 90, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83][i],
-      systolic: [140, 144, 138, 148, 142, 146, 150, 148, 152, 155, 158, 162, 168, 172][i],
-      diastolic: [88, 91, 86, 94, 89, 93, 96, 94, 98, 100, 104, 108, 112, 116][i],
-      heartRate: [88, 92, 86, 94, 90, 93, 96, 94, 98, 100, 104, 108, 112, 116][i],
-    })),
-    alerts: [
-      {
-        id: 'A008',
-        patientId: 'P010',
-        patientName: 'Lakshmi Venkataraman',
-        type: 'Weight',
-        message: 'Critical weight gain: +2.5kg in 48h - decompensation risk',
-        severity: 'critical',
-        timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-        acknowledged: false,
-      },
-      {
-        id: 'A009',
-        patientId: 'P010',
-        patientName: 'Lakshmi Venkataraman',
-        type: 'O2 Sat',
-        message: 'Severe hypoxia: SpO2 83%',
-        severity: 'critical',
-        timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-        acknowledged: false,
-      },
-    ],
-  },
-  {
-    id: 'P011',
     name: 'Narayan Bose',
     age: 65,
     gender: 'Male',
-    condition: 'Heart Failure',
+    conditions: ['Hypertension', 'Diabetes'],
+    comorbidities: ['Elderly', 'DKD'],
     city: 'Kolkata',
     phoneNumber: '+91-98300-11234',
     physicianName: 'Dr. Vikram Nair',
-    enrollmentDate: '2024-01-10',
-    treatmentStep: 3,
+    enrollmentDate: daysAgo(80),
+    weightKg: 75,
+    htnStep: 3,
+    diabetesStep: 'triple',
+    hba1cTier: getHbA1cTierInfo(2),
+    hba1cReadings: [
+      { date: daysAgo(80), value: 7.8 },
+      { date: daysAgo(25), value: 7.1 },
+    ],
     medications: [
-      { name: 'Sacubitril/Valsartan', genericName: 'Sacubitril/Valsartan', drugClass: 'ARNI' as const, dose: '50 mg', frequency: 'Twice daily', startDate: '2023-09-15' },
-      { name: 'Carvedilol', genericName: 'Carvedilol', drugClass: 'BetaBlocker' as const, dose: '12.5 mg', frequency: 'Twice daily', startDate: '2023-09-15' },
-      { name: 'Spironolactone', genericName: 'Spironolactone', drugClass: 'MRA' as const, dose: '25 mg', frequency: 'Once daily', startDate: '2024-01-01' },
+      { name: 'Telmisartan', genericName: 'Telmisartan', drugClass: 'ARB', dose: '80 mg', frequency: 'Once daily', startDate: daysAgo(80) },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB', dose: '10 mg', frequency: 'Once daily', startDate: daysAgo(80) },
+      { name: 'Chlorthalidone', genericName: 'Chlorthalidone', drugClass: 'Diuretic', dose: '12.5 mg', frequency: 'Once daily', startDate: daysAgo(50) },
+      { name: 'Metformin (SR)', genericName: 'Metformin', drugClass: 'Biguanide', dose: '1500 mg', frequency: 'Once daily, evening meal', startDate: daysAgo(80) },
+      { name: 'Sitagliptin', genericName: 'Sitagliptin', drugClass: 'DPP4i', dose: '100 mg', frequency: 'Once daily', startDate: daysAgo(50) },
+      { name: 'Dapagliflozin', genericName: 'Dapagliflozin', drugClass: 'SGLT2i', dose: '5 mg', frequency: 'Once daily', startDate: daysAgo(20) },
     ],
     lastReadingTime: minutesAgo(40),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      weight: [72, 72.2, 72.4, 72.6, 72.5, 72.7, 72.9, 73.2, 73.5, 73.8, 74, 74.3, 74.5, 75][i],
-      o2Sat: [93, 94, 92, 93, 94, 93, 92, 91, 92, 91, 90, 91, 90, 89][i],
-      systolic: [138, 140, 136, 142, 138, 140, 142, 139, 137, 141, 143, 138, 140, 142][i],
-      diastolic: [86, 88, 84, 90, 86, 88, 90, 87, 85, 89, 91, 86, 88, 90][i],
-      heartRate: [82, 84, 80, 86, 82, 84, 86, 83, 81, 85, 87, 82, 84, 86][i],
-    })),
+    vitals: mergeVitals(
+      dailyBP([
+        [138, 86], [140, 88], [136, 84], [134, 83], [138, 85], [132, 82], [130, 81],
+        [134, 83], [131, 82], [129, 80], [128, 80], [130, 81], [127, 79], [129, 80],
+      ]),
+      glucoseReadings([[8, 128, 'fasting'], [4, 122, 'fasting'], [1, 118, 'fasting']])
+    ),
     alerts: [
       {
-        id: 'A010',
-        patientId: 'P011',
+        id: 'A009',
+        patientId: 'P009',
         patientName: 'Narayan Bose',
-        type: 'Weight',
-        message: 'Weight gain 3kg over 14 days - monitoring required',
+        type: 'Glucose',
+        message: 'Above fasting target: 128 mg/dL',
         severity: 'warning',
         timestamp: new Date(Date.now() - 40 * 60000).toISOString(),
-        acknowledged: false,
+        acknowledged: true,
       },
+    ],
+    coachingTier: 'Moderate-touch',
+    coachingCallsCompleted: 5,
+    coachingCallsTarget: 8,
+    outreachLog: [
+      outreachCall({ id: 'O009-5', offset: 5, coordinatorName: 'Rohan Bhatt', coordinatorRole: 'Lifestyle Coach', callType: 'Tier Check-in', durationMin: 15, topics: ['Diet', 'Physical Activity'], dietNotes: 'Bengali diet high in rice/fish curry — discussed portion control rather than elimination.', exerciseNotes: 'Morning walks 20 min, 4 days/week.', summary: 'Both BP and glucose near target on triple therapy; biweekly cadence continuing.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G009-1', category: 'Diet', description: 'Reduce rice portion at lunch by one-third, replace with extra vegetables', setDate: daysAgo(19), targetDate: daysAgo(5), status: 'Partially Met', progressNote: 'Consistent about half the week.' }),
+      goal({ id: 'G009-2', category: 'Physical Activity', description: 'Morning walk 20 min/day, 5 days/week', setDate: daysAgo(19), targetDate: daysAgo(5), status: 'On Track' }),
     ],
   },
   {
-    id: 'P012',
+    id: 'P010',
     name: 'Deepa Nambiar',
     age: 57,
     gender: 'Female',
-    condition: 'Heart Failure',
+    conditions: ['Hypertension', 'Diabetes'],
+    comorbidities: [],
     city: 'Kochi',
     phoneNumber: '+91-94470-22345',
     physicianName: 'Dr. Anita Desai',
-    enrollmentDate: '2024-03-22',
-    treatmentStep: 2,
+    enrollmentDate: daysAgo(12),
+    weightKg: 68,
+    htnStep: 1,
+    diabetesStep: 'metformin',
+    hba1cTier: getHbA1cTierInfo(2),
+    hba1cReadings: [{ date: daysAgo(12), value: 7.6 }],
     medications: [
-      { name: 'Enalapril', genericName: 'Enalapril', drugClass: 'ACE' as const, dose: '5 mg', frequency: 'Twice daily', startDate: '2024-01-15' },
-      { name: 'Bisoprolol', genericName: 'Bisoprolol', drugClass: 'BetaBlocker' as const, dose: '2.5 mg', frequency: 'Once daily', startDate: '2024-01-15' },
-      { name: 'Furosemide', genericName: 'Furosemide', drugClass: 'Diuretic' as const, dose: '40 mg', frequency: 'Once daily', startDate: '2024-01-15' },
+      { name: 'Ramipril', genericName: 'Ramipril', drugClass: 'ACE', dose: '2.5 mg', frequency: 'Once daily', startDate: daysAgo(12) },
+      { name: 'Amlodipine', genericName: 'Amlodipine', drugClass: 'CCB', dose: '5 mg', frequency: 'Once daily', startDate: daysAgo(12) },
+      { name: 'Metformin (IR)', genericName: 'Metformin', drugClass: 'Biguanide', dose: '500 mg', frequency: 'Twice daily with meals', startDate: daysAgo(12) },
     ],
     lastReadingTime: minutesAgo(25),
-    vitals: Array.from({ length: 14 }, (_, i) => ({
-      date: daysAgo(13 - i),
-      weight: [55, 55.1, 55, 55.2, 55.1, 55.3, 55.2, 55.4, 55.3, 55.5, 55.4, 55.6, 55.5, 55.7][i],
-      o2Sat: [96, 97, 96, 97, 96, 97, 95, 96, 97, 96, 95, 97, 96, 96][i],
-      systolic: [126, 128, 124, 130, 126, 128, 130, 127, 125, 129, 131, 126, 128, 130][i],
-      diastolic: [80, 82, 78, 84, 80, 82, 84, 81, 79, 83, 85, 80, 82, 84][i],
-      heartRate: [72, 74, 70, 76, 72, 74, 76, 73, 71, 75, 77, 72, 74, 76][i],
-    })),
+    vitals: mergeVitals(
+      dailyBP([
+        [136, 86], [134, 85], [138, 87], [132, 84], [135, 85], [130, 83], [133, 84],
+        [128, 82], [131, 83], [126, 81], [129, 82],
+      ]),
+      glucoseReadings([[8, 142, 'fasting'], [5, 138, 'fasting'], [2, 130, 'fasting']])
+    ),
     alerts: [],
+    coachingTier: 'High-touch',
+    coachingCallsCompleted: 1,
+    coachingCallsTarget: 14,
+    outreachLog: [
+      outreachCall({ id: 'O010-1', offset: 1, coordinatorName: 'Divya Menon', coordinatorRole: 'Lifestyle Coach', callType: 'Week 1 Initial Assessment', durationMin: 42, topics: ['Diet', 'Physical Activity', 'Medication Adherence', 'Tobacco/Alcohol Use'], dietNotes: 'Newly diagnosed — baseline diet high in rice and fried snacks; no major changes attempted yet.', exerciseNotes: 'Currently sedentary.', medAdherenceNotes: 'New to all 3 medications — reviewed timing and metformin GI-tolerance counseling.', summary: 'Newly diagnosed (<3 months), assigned High-touch tier per protocol. Baseline SMART goals set this call.' }),
+    ],
+    smartGoals: [
+      goal({ id: 'G010-1', category: 'Diet', description: 'Cut down added salt in diet over the next 2 weeks — no pickle/papad, taste before salting', setDate: daysAgo(1), targetDate: daysAgo(-13), status: 'On Track' }),
+      goal({ id: 'G010-2', category: 'Physical Activity', description: 'Start 10 min walk after dinner, building toward 150 min/week', setDate: daysAgo(1), targetDate: daysAgo(-13), status: 'On Track' }),
+      goal({ id: 'G010-3', category: 'Medication Adherence', description: 'Take metformin with meals both times daily to reduce GI upset and support adherence', setDate: daysAgo(1), targetDate: daysAgo(-13), status: 'On Track' }),
+    ],
   },
 ];
+
+function outreachCall(params: {
+  id: string;
+  offset: number;
+  coordinatorName: string;
+  coordinatorRole: OutreachCall['coordinatorRole'];
+  callType: OutreachCall['callType'];
+  durationMin: number;
+  topics: OutreachCall['topics'];
+  dietNotes?: string;
+  exerciseNotes?: string;
+  medAdherenceNotes?: string;
+  summary: string;
+}): OutreachCall {
+  return {
+    id: params.id,
+    date: daysAgo(params.offset),
+    coordinatorName: params.coordinatorName,
+    coordinatorRole: params.coordinatorRole,
+    callType: params.callType,
+    durationMin: params.durationMin,
+    topics: params.topics,
+    dietNotes: params.dietNotes,
+    exerciseNotes: params.exerciseNotes,
+    medAdherenceNotes: params.medAdherenceNotes,
+    summary: params.summary,
+  };
+}
+
+function goal(params: {
+  id: string;
+  category: SmartGoal['category'];
+  description: string;
+  setDate: string;
+  targetDate: string;
+  status: SmartGoal['status'];
+  progressNote?: string;
+}): SmartGoal {
+  return params;
+}
 
 // Compute alertStatus for each patient
 export const mockPatients: Patient[] = rawPatients.map((p) => ({
@@ -465,18 +557,21 @@ export function getPatientById(id: string): Patient | undefined {
 
 export function getPatientSummaries(condition?: string) {
   return mockPatients
-    .filter((p) => !condition || condition === 'All' || p.condition === condition)
+    .filter((p) => !condition || condition === 'All' || p.conditions.includes(condition as Patient['conditions'][number]))
     .map((p) => {
       const latestVitals = getLatestVitalsSummary(p);
       return {
         id: p.id,
         name: p.name,
         age: p.age,
-        condition: p.condition,
+        conditions: p.conditions,
         city: p.city,
         alertStatus: p.alertStatus,
         lastReadingTime: p.lastReadingTime,
         latestVitals,
+        coachingTier: p.coachingTier,
+        coachingCallsCompleted: p.coachingCallsCompleted,
+        coachingCallsTarget: p.coachingCallsTarget,
       };
     });
 }
@@ -489,8 +584,9 @@ export function getDashboardStats() {
     (p) => p.alertStatus === 'stable' || p.alertStatus === 'normal'
   ).length;
   const activeAlerts = mockPatients.flatMap((p) => p.alerts).filter((a) => !a.acknowledged).length;
+  const outreachThisProgram = mockPatients.reduce((sum, p) => sum + p.coachingCallsCompleted, 0);
 
-  return { total, critical, warning, stable, activeAlerts };
+  return { total, critical, warning, stable, activeAlerts, outreachThisProgram };
 }
 
 export function getRecentAlerts() {

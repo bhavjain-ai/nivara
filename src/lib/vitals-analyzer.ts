@@ -1,5 +1,5 @@
-import { Patient, AlertStatus, VitalReading } from '@/types';
-import { analyzeBP, analyzeGlucose, analyzeO2Sat, analyzeWeight } from './guidelines';
+import { Patient, AlertStatus } from '@/types';
+import { analyzeBP, analyzeGlucose, getBPTarget, getGlucoseTargets } from './guidelines';
 
 const statusOrder: AlertStatus[] = ['critical', 'warning', 'stable', 'normal'];
 
@@ -18,38 +18,35 @@ function mapStatus(raw: string): AlertStatus {
   return 'stable';
 }
 
-export function getPatientAlertLevel(patient: Patient): AlertStatus {
-  const vitals = patient.vitals;
-  if (!vitals || vitals.length === 0) return 'stable';
+// BP and glucose are logged as separate sparse readings (not one combined daily record —
+// SMBG frequency is individualized, not daily), so the latest BP and latest glucose reading
+// must be found independently rather than assuming they share the single last vitals entry.
+function latestBPReading(patient: Patient) {
+  const readings = patient.vitals.filter((v) => v.systolic && v.diastolic);
+  return readings[readings.length - 1];
+}
 
-  const latest = vitals[vitals.length - 1];
+function latestGlucoseReading(patient: Patient) {
+  const readings = patient.vitals.filter((v) => v.glucose);
+  return readings[readings.length - 1];
+}
+
+export function getPatientAlertLevel(patient: Patient): AlertStatus {
+  if (!patient.vitals || patient.vitals.length === 0) return 'stable';
+
   const statuses: AlertStatus[] = [];
 
-  // Analyze BP
-  if (latest.systolic && latest.diastolic) {
-    const result = analyzeBP(latest.systolic, latest.diastolic, patient.condition);
+  const latestBP = latestBPReading(patient);
+  if (latestBP?.systolic && latestBP.diastolic) {
+    const target = getBPTarget(patient.conditions, patient.comorbidities, patient.age);
+    const result = analyzeBP(latestBP.systolic, latestBP.diastolic, target);
     statuses.push(mapStatus(result.status));
   }
 
-  // Analyze Glucose
-  if (latest.glucose) {
-    const result = analyzeGlucose(latest.glucose, latest.glucoseType || 'fasting', patient.condition);
-    statuses.push(mapStatus(result.status));
-  }
-
-  // Analyze O2 Sat
-  if (latest.o2Sat) {
-    const result = analyzeO2Sat(latest.o2Sat, patient.condition);
-    statuses.push(mapStatus(result.status));
-  }
-
-  // Analyze Weight
-  if (latest.weight) {
-    const prevWeights = vitals
-      .slice(0, -1)
-      .map((v: VitalReading) => v.weight)
-      .filter((w): w is number => w !== undefined);
-    const result = analyzeWeight(latest.weight, prevWeights, patient.condition);
+  const latestGlucose = latestGlucoseReading(patient);
+  if (latestGlucose?.glucose && patient.hba1cTier) {
+    const targets = getGlucoseTargets(patient.hba1cTier.tier);
+    const result = analyzeGlucose(latestGlucose.glucose, latestGlucose.glucoseType || 'fasting', targets);
     statuses.push(mapStatus(result.status));
   }
 
@@ -58,14 +55,13 @@ export function getPatientAlertLevel(patient: Patient): AlertStatus {
 }
 
 export function getLatestVitalsSummary(patient: Patient) {
-  const latest = patient.vitals[patient.vitals.length - 1];
-  if (!latest) return {};
+  const latestBP = latestBPReading(patient);
+  const latestGlucose = latestGlucoseReading(patient);
 
   return {
-    bp: latest.systolic && latest.diastolic ? `${latest.systolic}/${latest.diastolic}` : undefined,
-    glucose: latest.glucose,
-    o2Sat: latest.o2Sat,
-    weight: latest.weight,
+    bp: latestBP?.systolic && latestBP.diastolic ? `${latestBP.systolic}/${latestBP.diastolic}` : undefined,
+    glucose: latestGlucose?.glucose,
+    glucoseType: latestGlucose?.glucoseType,
   };
 }
 

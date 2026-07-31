@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Nivara — Physician RPM Dashboard',
-  description: 'Remote Patient Monitoring for COPD, Hypertension, Diabetes & Heart Failure',
+  description: 'Physician-led remote monitoring for hypertension and Type 2 diabetes — Nivara Health India pilot',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

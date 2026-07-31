@@ -23,7 +23,6 @@ export async function GET() {
       date: r.timestamp.split('T')[0],
       systolic: r.systolic,
       diastolic: r.diastolic,
-      heartRate: r.pulse,
     }));
 
     if (mockPatient) {
@@ -45,7 +44,7 @@ export async function GET() {
       name: `Patient ${record.patientId}`,
       age: null,
       gender: null,
-      condition: 'Hypertension',
+      condition: 'Hypertension', // kept as a flat string for the /api/patients/live wire format
       city: '—',
       phoneNumber: '—',
       physicianName: 'Unassigned',

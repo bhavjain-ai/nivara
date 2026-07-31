@@ -1,24 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertStatus, Condition } from '@/types';
+import { AlertStatus, Condition, CoachingTier } from '@/types';
 import { Badge } from '@/components/ui/Badge';
-import { Clock, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, PhoneCall } from 'lucide-react';
 
 interface PatientRow {
   id: string;
   name: string;
   age: number;
-  condition: Condition;
+  conditions: Condition[];
   city: string;
   alertStatus: AlertStatus;
   lastReadingTime: string;
   latestVitals: {
     bp?: string;
     glucose?: number;
-    o2Sat?: number;
-    weight?: number;
+    glucoseType?: 'fasting' | 'post-meal';
   };
+  coachingTier: CoachingTier;
+  coachingCallsCompleted: number;
+  coachingCallsTarget: number;
 }
 
 interface PatientTableProps {
@@ -32,10 +34,14 @@ function statusLabel(s: AlertStatus) {
 }
 
 const conditionColors: Record<string, string> = {
-  COPD: 'bg-blue-50 text-blue-700',
   Hypertension: 'bg-purple-50 text-purple-700',
   Diabetes: 'bg-orange-50 text-orange-700',
-  'Heart Failure': 'bg-rose-50 text-rose-700',
+};
+
+const coachingTierColors: Record<CoachingTier, string> = {
+  'High-touch': 'bg-red-50 text-red-700',
+  'Moderate-touch': 'bg-amber-50 text-amber-700',
+  'Maintenance-touch': 'bg-green-50 text-green-700',
 };
 
 export function PatientTable({ patients }: PatientTableProps) {
@@ -65,6 +71,9 @@ export function PatientTable({ patients }: PatientTableProps) {
               Status
             </th>
             <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
+              Care Outreach
+            </th>
+            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
               Last Reading
             </th>
             <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3"></th>
@@ -91,11 +100,16 @@ export function PatientTable({ patients }: PatientTableProps) {
                 </div>
               </td>
               <td className="px-4 py-3">
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${conditionColors[p.condition]}`}
-                >
-                  {p.condition}
-                </span>
+                <div className="flex flex-wrap gap-1">
+                  {p.conditions.map((c) => (
+                    <span
+                      key={c}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${conditionColors[c]}`}
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
               </td>
               <td className="px-4 py-3">
                 <div className="text-sm text-gray-700 space-y-0.5">
@@ -107,20 +121,10 @@ export function PatientTable({ patients }: PatientTableProps) {
                   )}
                   {p.latestVitals.glucose && (
                     <div>
-                      <span className="text-gray-400 text-xs">Glc: </span>
+                      <span className="text-gray-400 text-xs">
+                        Glc ({p.latestVitals.glucoseType === 'post-meal' ? 'PP' : 'F'}):{' '}
+                      </span>
                       {p.latestVitals.glucose} mg/dL
-                    </div>
-                  )}
-                  {p.latestVitals.o2Sat && (
-                    <div>
-                      <span className="text-gray-400 text-xs">SpO2: </span>
-                      {p.latestVitals.o2Sat}%
-                    </div>
-                  )}
-                  {p.latestVitals.weight && (
-                    <div>
-                      <span className="text-gray-400 text-xs">Wt: </span>
-                      {p.latestVitals.weight} kg
                     </div>
                   )}
                 </div>
@@ -129,6 +133,17 @@ export function PatientTable({ patients }: PatientTableProps) {
                 <Badge variant={p.alertStatus === 'normal' ? 'stable' : p.alertStatus}>
                   {statusLabel(p.alertStatus)}
                 </Badge>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1.5">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${coachingTierColors[p.coachingTier]}`}>
+                    {p.coachingTier}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-gray-500">
+                    <PhoneCall className="w-3 h-3" />
+                    {p.coachingCallsCompleted}/{p.coachingCallsTarget}
+                  </span>
+                </div>
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1 text-xs text-gray-400">

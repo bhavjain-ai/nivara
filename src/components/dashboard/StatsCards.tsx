@@ -1,4 +1,4 @@
-import { Users, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
+import { Users, AlertTriangle, AlertCircle, CheckCircle, PhoneCall } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 
 interface StatsCardsProps {
@@ -8,6 +8,7 @@ interface StatsCardsProps {
     warning: number;
     stable: number;
     activeAlerts: number;
+    outreachThisProgram: number;
   };
 }
 
@@ -48,10 +49,19 @@ export function StatsCards({ stats }: StatsCardsProps) {
       border: 'border-green-100',
       sub: 'Patients',
     },
+    {
+      label: 'Care Outreach Calls',
+      value: stats.outreachThisProgram,
+      icon: PhoneCall,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+      border: 'border-indigo-100',
+      sub: 'Nurse + coach, to date',
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {cards.map(({ label, value, icon: Icon, color, bg, border, sub }) => (
         <Card key={label} className={`border ${border}`}>
           <CardContent className="p-5">

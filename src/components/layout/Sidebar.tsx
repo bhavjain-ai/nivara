@@ -67,7 +67,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-white text-sm font-medium truncate">Dr. Anita Desai</div>
-            <div className="text-blue-200 text-xs">Pulmonologist</div>
+            <div className="text-blue-200 text-xs">Internal Medicine</div>
           </div>
         </div>
         <button className="flex items-center gap-2 text-blue-200 hover:text-white text-xs transition-colors w-full">
