@@ -1,0 +1,26 @@
+name: NivaraPatient
+options:
+  bundleIdPrefix: com.nivara
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  NivaraPatient:
+    type: application
+    platform: iOS
+    sources:
+      - NivaraPatient
+    info:
+      properties:
+        CFBundleDisplayName: Nivara
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSBluetoothAlwaysUsageDescription: "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter."
+        NSBluetoothPeripheralUsageDescription: "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nivara.patient
+        SWIFT_VERSION: "5.0"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"

@@ -10,3 +10,9 @@ android/build/
 android/app/build/
 android/local.properties
 *.hprof
+
+# iOS
+ios/**/*.xcodeproj/
+ios/**/DerivedData/
+ios/**/xcuserdata/
+ios/**/.build/
