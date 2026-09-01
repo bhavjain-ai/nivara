@@ -19,6 +19,10 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
+        # Force Xcode to use ONLY NivaraPatient/Info.plist (with our
+        # UILaunchScreen key) rather than auto-generating a competing one
+        # from INFOPLIST_KEY_* build settings, which don't include it.
+        GENERATE_INFOPLIST_FILE: "NO"
         # Fill in your personal team ID so `xcodegen generate` doesn't wipe
         # out signing every time it regenerates the .xcodeproj. Find it via
         # Xcode > Settings > Accounts > (your Apple ID) > your team, or after
