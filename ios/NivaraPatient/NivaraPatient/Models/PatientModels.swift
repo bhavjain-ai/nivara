@@ -21,19 +21,28 @@ struct Medication: Identifiable, Codable, Equatable {
         self.frequency = frequency
         self.startDate = startDate
     }
+
+    private static let diabetesDrugClasses: Set<String> = [
+        "Biguanide", "SGLT2i", "GLP1", "DPP4i", "Sulfonylurea", "TZD", "Insulin",
+    ]
+
+    /// Used to scope the Medications tab to the Type 2 diabetes regimen.
+    var isDiabetesMedication: Bool { Self.diabetesDrugClasses.contains(drugClass) }
 }
 
 /// A single logged medication change (started, stopped, dose adjusted) shown
-/// in My Health's "Recent Changes" history under the current medication list.
+/// on the Medications tab under the current medication list.
 struct MedicationChange: Identifiable, Codable, Equatable {
     let id: UUID
     let date: Date
     let description: String
+    let relatedCondition: Condition
 
-    init(id: UUID = UUID(), date: Date, description: String) {
+    init(id: UUID = UUID(), date: Date, description: String, relatedCondition: Condition) {
         self.id = id
         self.date = date
         self.description = description
+        self.relatedCondition = relatedCondition
     }
 }
 

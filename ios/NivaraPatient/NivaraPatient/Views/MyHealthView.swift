@@ -1,25 +1,36 @@
 import SwiftUI
 import Charts
 
+/// Focused on the initial (Type 2 diabetes) patient population: HbA1c and
+/// fasting blood glucose only. Blood pressure and medications have their own
+/// homes (BP would live here too once the hypertension population launches;
+/// medications are their own tab so patients aren't hunting for them at the
+/// bottom of a long page).
 struct MyHealthView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
 
     private var profile: PatientProfile { viewModel.profile }
 
+    private var fastingReadings: [GlucoseReading] {
+        viewModel.vitals.glucoseReadings.filter { $0.sampleType == .fasting }
+    }
+
+    /// Status for the latest *fasting* reading specifically — not
+    /// `viewModel.latestGlucoseStatus`, which tracks the latest glucose
+    /// reading of any type and would mismatch the fasting value shown here
+    /// whenever the most recent reading overall was post-meal.
+    private var fastingStatus: VitalStatus? {
+        guard let latest = fastingReadings.last, let tier = profile.hba1cTier else { return nil }
+        let targets = ClinicalGuidelines.glucoseTargets(forTier: tier.tier)
+        return ClinicalGuidelines.analyzeGlucose(glucose: latest.glucoseMgDl, sampleType: .fasting, targets: targets)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    if profile.conditions.contains(.hypertension) {
-                        bloodPressureSection
-                    }
-                    if profile.conditions.contains(.diabetes) {
-                        glucoseSection
-                        if profile.hba1cTier != nil {
-                            hba1cSection
-                        }
-                    }
-                    medicationsSection
+                    hba1cSection
+                    fastingGlucoseSection
                 }
                 .padding()
             }
@@ -39,43 +50,37 @@ struct MyHealthView: View {
         }
     }
 
-    // MARK: - Blood Pressure
+    // MARK: - HbA1c
 
-    private var bloodPressureSection: some View {
+    private var hba1cSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Blood Pressure", icon: "heart.fill")
+            sectionHeader("HbA1c", icon: "testtube.2")
 
-            if let latest = viewModel.vitals.latestBP {
+            if let latest = viewModel.vitals.latestHbA1c {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("\(latest.systolic)/\(latest.diastolic)")
+                        Text(String(format: "%.1f", latest.value))
                             .font(.system(size: 44, weight: .bold, design: .rounded))
                             .foregroundStyle(NivaraColor.textPrimary)
-                        Text("mmHg")
+                        Text("%")
                             .font(.subheadline)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }
                     Text(NivaraDate.relative(latest.date))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
-                    if let status = viewModel.latestBPStatus {
-                        Text(status.message)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(status.level.color)
-                    }
-                    if let target = profile.bpTarget {
-                        Text("Your target: \(target.label)")
+                    if let tier = profile.hba1cTier {
+                        Text("Your target: \(tier.targetLabel)")
                             .font(.caption2)
                             .foregroundStyle(NivaraColor.textSecondary)
-                            .padding(.top, 2)
                     }
                 }
 
-                if viewModel.vitals.bpReadings.count > 1 {
-                    bpChart
+                if viewModel.vitals.hba1cReadings.count > 1 {
+                    hba1cChart
                 }
 
-                recentBPReadings
+                recentHbA1cReadings
             } else {
                 noReadingYet
             }
@@ -83,49 +88,54 @@ struct MyHealthView: View {
         .nivaraCard()
     }
 
-    private var bpChart: some View {
+    private var hba1cChart: some View {
         Chart {
-            ForEach(viewModel.vitals.bpReadings) { reading in
-                LineMark(x: .value("Date", reading.date), y: .value("Systolic", reading.systolic), series: .value("Series", "Systolic"))
+            ForEach(viewModel.vitals.hba1cReadings) { reading in
+                LineMark(x: .value("Date", reading.date), y: .value("HbA1c", reading.value))
                     .foregroundStyle(NivaraColor.forestGreen)
-                LineMark(x: .value("Date", reading.date), y: .value("Diastolic", reading.diastolic), series: .value("Series", "Diastolic"))
-                    .foregroundStyle(NivaraColor.forestGreen.opacity(0.45))
+                PointMark(x: .value("Date", reading.date), y: .value("HbA1c", reading.value))
+                    .foregroundStyle(NivaraColor.forestGreen)
+            }
+            if let tier = profile.hba1cTier {
+                RuleMark(y: .value("Target", tier.targetValue))
+                    .foregroundStyle(NivaraColor.warning.opacity(0.6))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
             }
         }
         .frame(height: 140)
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 3)) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.day().month())
+                AxisValueLabel(format: .dateTime.month().year(.twoDigits))
             }
         }
         .padding(.top, 4)
     }
 
-    private var recentBPReadings: some View {
-        let recent = Array(viewModel.vitals.bpReadings.suffix(5).reversed())
+    private var recentHbA1cReadings: some View {
+        let recent = Array(viewModel.vitals.hba1cReadings.suffix(5).reversed())
         return VStack(alignment: .leading, spacing: 10) {
-            Text("RECENT READINGS")
+            Text("RECENT A1C RESULTS")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
                 .padding(.top, 6)
 
             ForEach(recent) { reading in
                 HStack {
-                    Text(NivaraDate.shortWithTime.string(from: reading.date))
+                    Text(NivaraDate.short.string(from: reading.date))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()
-                    Text("\(reading.systolic)/\(reading.diastolic) mmHg")
+                    Text(String(format: "%.1f%%", reading.value))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
                 }
                 Divider()
             }
 
-            if viewModel.vitals.bpReadings.count > 5 {
+            if viewModel.vitals.hba1cReadings.count > 5 {
                 NavigationLink {
-                    BPHistoryListView()
+                    HbA1cHistoryListView()
                 } label: {
                     Text("See More")
                         .font(.caption.weight(.semibold))
@@ -135,13 +145,13 @@ struct MyHealthView: View {
         }
     }
 
-    // MARK: - Glucose
+    // MARK: - Fasting Glucose
 
-    private var glucoseSection: some View {
+    private var fastingGlucoseSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Blood Glucose", icon: "drop.fill")
+            sectionHeader("Fasting Blood Glucose", icon: "drop.fill")
 
-            if let latest = viewModel.vitals.latestGlucose {
+            if let latest = fastingReadings.last {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(latest.glucoseMgDl)")
@@ -151,21 +161,25 @@ struct MyHealthView: View {
                             .font(.subheadline)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }
-                    Text("\(latest.sampleType.displayName) · \(NivaraDate.relative(latest.date))")
+                    Text(NivaraDate.relative(latest.date))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
-                    if let status = viewModel.latestGlucoseStatus {
+                    if let status = fastingStatus {
                         Text(status.message)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(status.level.color)
                     }
                 }
 
-                if viewModel.vitals.glucoseReadings.count > 1 {
-                    glucoseChart
+                if fastingReadings.count > 1 {
+                    fastingChart
                 }
 
-                recentGlucoseReadings
+                recentFastingReadings
+
+                if let latestOverall = viewModel.vitals.latestGlucose {
+                    retagRow(for: latestOverall)
+                }
             } else {
                 noReadingYet
             }
@@ -173,13 +187,13 @@ struct MyHealthView: View {
         .nivaraCard()
     }
 
-    private var glucoseChart: some View {
+    private var fastingChart: some View {
         Chart {
-            ForEach(viewModel.vitals.glucoseReadings) { reading in
-                PointMark(x: .value("Date", reading.date), y: .value("Glucose", reading.glucoseMgDl))
-                    .foregroundStyle(reading.sampleType == .fasting ? NivaraColor.forestGreen : Color.orange)
+            ForEach(fastingReadings) { reading in
                 LineMark(x: .value("Date", reading.date), y: .value("Glucose", reading.glucoseMgDl))
-                    .foregroundStyle(NivaraColor.textSecondary.opacity(0.25))
+                    .foregroundStyle(NivaraColor.forestGreen.opacity(0.4))
+                PointMark(x: .value("Date", reading.date), y: .value("Glucose", reading.glucoseMgDl))
+                    .foregroundStyle(NivaraColor.forestGreen)
             }
         }
         .frame(height: 140)
@@ -192,8 +206,8 @@ struct MyHealthView: View {
         .padding(.top, 4)
     }
 
-    private var recentGlucoseReadings: some View {
-        let recent = Array(viewModel.vitals.glucoseReadings.suffix(5).reversed())
+    private var recentFastingReadings: some View {
+        let recent = Array(fastingReadings.suffix(5).reversed())
         return VStack(alignment: .leading, spacing: 10) {
             Text("RECENT READINGS")
                 .font(.caption2.weight(.semibold))
@@ -209,12 +223,11 @@ struct MyHealthView: View {
                     Text("\(reading.glucoseMgDl) mg/dL")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
-                    PillLabel(text: reading.sampleType == .fasting ? "F" : "PP")
                 }
                 Divider()
             }
 
-            if viewModel.vitals.glucoseReadings.count > 5 {
+            if fastingReadings.count > 5 {
                 NavigationLink {
                     GlucoseHistoryListView()
                 } label: {
@@ -223,15 +236,13 @@ struct MyHealthView: View {
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
             }
-
-            if let latest = viewModel.vitals.latestGlucose {
-                retagRow(for: latest)
-            }
         }
     }
 
     /// Meters don't reliably signal fasting vs. post-meal, so the app guesses
-    /// — this lets the patient fix the most recent reading if it's wrong.
+    /// — this lets the patient fix the most recent reading if it's wrong
+    /// (relevant here since a mis-tagged post-meal reading would otherwise
+    /// silently disappear from — or wrongly appear in — the fasting trend).
     private func retagRow(for reading: GlucoseReading) -> some View {
         HStack(spacing: 8) {
             Text("Latest reading tagged as \(reading.sampleType.displayName.lowercased()). Wrong?")
@@ -249,87 +260,6 @@ struct MyHealthView: View {
             .foregroundStyle(NivaraColor.forestGreen)
         }
         .padding(.top, 4)
-    }
-
-    // MARK: - HbA1c
-
-    private var hba1cSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("HbA1c", icon: "testtube.2")
-
-            if let latest = viewModel.vitals.latestHbA1c {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(String(format: "%.1f", latest.value))
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundStyle(NivaraColor.textPrimary)
-                    Text("%")
-                        .font(.subheadline)
-                        .foregroundStyle(NivaraColor.textSecondary)
-                }
-                if let tier = profile.hba1cTier {
-                    Text("Your target: \(tier.targetLabel)")
-                        .font(.caption)
-                        .foregroundStyle(NivaraColor.textSecondary)
-                }
-            } else {
-                noReadingYet
-            }
-        }
-        .nivaraCard()
-    }
-
-    // MARK: - Medications
-
-    private var medicationsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader("Medications", icon: "pills.fill")
-
-            Text("CURRENT")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(NivaraColor.textSecondary)
-
-            ForEach(profile.medications) { med in
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(med.name)
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(NivaraColor.textPrimary)
-                        Spacer()
-                        PillLabel(text: med.drugClass)
-                    }
-                    Text("\(med.dose) · \(med.frequency)")
-                        .font(.subheadline)
-                        .foregroundStyle(NivaraColor.textSecondary)
-                }
-                .padding(.vertical, 6)
-                Divider()
-            }
-
-            Text("Prescribed by \(profile.physicianName)")
-                .font(.caption2)
-                .foregroundStyle(NivaraColor.textSecondary)
-
-            if !profile.medicationHistory.isEmpty {
-                Text("RECENT CHANGES")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(NivaraColor.textSecondary)
-                    .padding(.top, 8)
-
-                let history = profile.medicationHistory.sorted { $0.date > $1.date }
-                ForEach(history) { change in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(NivaraDate.short.string(from: change.date))
-                            .font(.caption2)
-                            .foregroundStyle(NivaraColor.textSecondary)
-                        Text(change.description)
-                            .font(.subheadline)
-                            .foregroundStyle(NivaraColor.textPrimary)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-        .nivaraCard()
     }
 
     // MARK: - Shared bits

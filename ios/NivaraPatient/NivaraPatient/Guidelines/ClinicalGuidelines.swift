@@ -123,4 +123,21 @@ enum ClinicalGuidelines {
             )
         }
     }
+
+    // MARK: - Post-measurement reassurance
+
+    /// The warm, patient-facing message shown right after a fresh reading
+    /// comes in over BLE — separate from the precise clinical `VitalStatus`
+    /// message, and deliberately sets expectations about follow-up rather
+    /// than just stating the number.
+    static func reassuranceMessage(for level: VitalStatusLevel) -> String {
+        switch level {
+        case .normal:
+            return "Great job taking your measurement. Your result is within range."
+        case .warning:
+            return "Thank you for taking your measurement. Your result is a little out of range. We're keeping an eye on it — one of our coaches will contact you if it continues to be high this week."
+        case .critical:
+            return "Thank you for taking your measurement. Your result needs prompt attention, so we've notified your care team — they'll follow up with you shortly. If you feel unwell, please contact your care team right away."
+        }
+    }
 }

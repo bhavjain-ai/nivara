@@ -24,18 +24,8 @@ struct HomeView: View {
                     }
                     .padding(.top, 8)
 
-                    if viewModel.justReceivedReading {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("New reading synced from your device")
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(NivaraColor.forestGreen)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(NivaraColor.sageGreen)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .transition(.opacity)
+                    if let reassurance = viewModel.postMeasurementMessage {
+                        reassuranceCard(reassurance)
                     }
 
                     measurementStatusCard
@@ -52,6 +42,21 @@ struct HomeView: View {
             .background(NivaraColor.cream)
             .navigationBarHidden(true)
         }
+    }
+
+    private func reassuranceCard(_ reassurance: PostMeasurementMessage) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: reassurance.level == .normal ? "checkmark.circle.fill" : "info.circle.fill")
+                .foregroundStyle(reassurance.level.color)
+            Text(reassurance.text)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(NivaraColor.textPrimary)
+        }
+        .padding(14)
+        .background(reassurance.level.backgroundColor)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(reassurance.level.color.opacity(0.3)))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .transition(.opacity)
     }
 
     @ViewBuilder
@@ -82,7 +87,7 @@ struct HomeView: View {
                         Text("You haven't taken a measurement yet today")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(NivaraColor.textPrimary)
-                        Text("Connect your device to check your BP or glucose.")
+                        Text("Connect your glucose meter to check in.")
                             .font(.caption)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }

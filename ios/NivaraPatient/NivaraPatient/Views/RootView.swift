@@ -8,12 +8,19 @@ struct RootView: View {
     @State private var selectedTab: AppTab = .home
 
     var body: some View {
+        // Deliberately NOT ignoring safe area here at the container level —
+        // that was confusing the nested NavigationStack's own top-safe-area
+        // math, causing page titles to render behind the status bar (and,
+        // seemingly, occasional black bars around content during
+        // transitions). The rail opts itself into a full-height bleed
+        // individually below; the content pane behaves like an ordinary,
+        // safe-area-respecting NavigationStack.
         HStack(spacing: 0) {
             sideRail
             contentArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(NivaraColor.cream.ignoresSafeArea())
+        .background(NivaraColor.cream)
         .environmentObject(viewModel)
     }
 
@@ -66,6 +73,8 @@ struct RootView: View {
             HomeView(selectedTab: $selectedTab)
         case .myHealth:
             MyHealthView()
+        case .medications:
+            MedicationsView()
         case .careTeam:
             CareTeamView()
         case .contactUs:

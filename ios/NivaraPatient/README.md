@@ -72,11 +72,20 @@ The app uses a persistent left-side icon rail (mirroring the physician web
 dashboard's Sidebar) rather than a bottom tab bar:
 
 - **Home** — time-of-day greeting, whether you've logged a reading today (with
-  a prompt to take one if not), and a shortcut into My Health.
-- **My Health** — your latest BP/glucose/HbA1c in large type, a trend chart
-  under each, your 5 most recent readings with a "See More" for full history,
-  and your medications.
-- **Care Team** — coaching tier, outreach call log, SMART goals.
+  a prompt to take one if not), a warm status-aware message right after a
+  fresh reading comes in, and a shortcut into My Health.
+- **My Health** — scoped to the initial (Type 2 diabetes) patient population:
+  HbA1c and fasting blood glucose only. Each shows the latest result in large
+  type, a trend chart, your 5 most recent readings, and a "See More" for full
+  history. Blood pressure support still exists end-to-end (BLE parsing,
+  guidelines, history views) for when the hypertension population launches —
+  it's just not surfaced on this page yet.
+- **Medications** — your current Type 2 diabetes regimen in large type, with
+  a "Recent Changes" history underneath so it's obvious what's different.
+- **Care Team** — your physician, dietician, and coach as tappable avatar
+  cards; each opens a chat-thread-style read of every logged contact with
+  that person. A "Got a Question? Contact Us" button and your SMART goals
+  sit below.
 - **Contact Us** — physician, care coordinator, and Nivara support, each with
   a tap-to-call/email button.
 

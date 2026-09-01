@@ -103,3 +103,12 @@ struct VitalStatus: Equatable {
     let message: String
     let guideline: String
 }
+
+/// The reassuring, patient-facing message shown right after a fresh BLE
+/// reading comes in — distinct from `VitalStatus.message`, which is a
+/// precise clinical description; this is deliberately warmer and sets
+/// expectations about follow-up.
+struct PostMeasurementMessage: Equatable {
+    let level: VitalStatusLevel
+    let text: String
+}

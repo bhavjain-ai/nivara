@@ -74,6 +74,7 @@ struct NivaraCard: ViewModifier {
     var padding: CGFloat = 16
     func body(content: Content) -> some View {
         content
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(padding)
             .background(NivaraColor.surface)
             .overlay(

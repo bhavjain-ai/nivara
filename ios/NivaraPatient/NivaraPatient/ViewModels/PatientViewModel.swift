@@ -8,9 +8,9 @@ final class PatientViewModel: ObservableObject {
 
     @Published private(set) var latestBPStatus: VitalStatus?
     @Published private(set) var latestGlucoseStatus: VitalStatus?
-    /// True right after a fresh BLE reading lands, so the UI can flash a
-    /// "just synced" confirmation before it fades.
-    @Published var justReceivedReading = false
+    /// Set right after a fresh BLE reading lands, so Home can show a warm,
+    /// status-aware confirmation before it fades.
+    @Published private(set) var postMeasurementMessage: PostMeasurementMessage?
 
     private var vitalsCancellable: AnyCancellable?
     private var bleCancellable: AnyCancellable?
@@ -28,7 +28,10 @@ final class PatientViewModel: ObservableObject {
                 pulse: parsed.pulseRate,
                 date: parsed.timestamp ?? Date()
             )
-            self.flashReceived()
+            if let target = self.profile.bpTarget {
+                let status = ClinicalGuidelines.analyzeBP(systolic: parsed.systolic, diastolic: parsed.diastolic, target: target)
+                self.showReassurance(for: status.level)
+            }
         }
 
         bleManager.onGlucoseReading = { [weak self] parsed in
@@ -38,7 +41,11 @@ final class PatientViewModel: ObservableObject {
                 sampleType: parsed.sampleType,
                 date: parsed.timestamp ?? Date()
             )
-            self.flashReceived()
+            if let tier = self.profile.hba1cTier {
+                let targets = ClinicalGuidelines.glucoseTargets(forTier: tier.tier)
+                let status = ClinicalGuidelines.analyzeGlucose(glucose: mgDl, sampleType: parsed.sampleType, targets: targets)
+                self.showReassurance(for: status.level)
+            }
         }
 
         // Re-derive status labels any time the underlying history changes
@@ -60,10 +67,10 @@ final class PatientViewModel: ObservableObject {
         refreshStatus()
     }
 
-    private func flashReceived() {
-        justReceivedReading = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
-            self?.justReceivedReading = false
+    private func showReassurance(for level: VitalStatusLevel) {
+        postMeasurementMessage = PostMeasurementMessage(level: level, text: ClinicalGuidelines.reassuranceMessage(for: level))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
+            self?.postMeasurementMessage = nil
         }
     }
 

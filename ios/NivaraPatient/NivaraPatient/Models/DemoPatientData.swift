@@ -26,9 +26,9 @@ enum DemoPatientData {
             Medication(name: "Metformin (SR)", drugClass: "Biguanide", dose: "1000 mg", frequency: "Once daily, evening meal", startDate: daysAgo(60)),
         ],
         medicationHistory: [
-            MedicationChange(date: daysAgo(60), description: "Started Telmisartan 40 mg + Amlodipine 5 mg (dual therapy)"),
-            MedicationChange(date: daysAgo(60), description: "Started Metformin (SR) 500 mg"),
-            MedicationChange(date: daysAgo(30), description: "Increased Metformin (SR) from 500 mg to 1000 mg"),
+            MedicationChange(date: daysAgo(60), description: "Started Telmisartan 40 mg + Amlodipine 5 mg (dual therapy)", relatedCondition: .hypertension),
+            MedicationChange(date: daysAgo(60), description: "Started Metformin (SR) 500 mg", relatedCondition: .diabetes),
+            MedicationChange(date: daysAgo(30), description: "Increased Metformin (SR) from 500 mg to 1000 mg", relatedCondition: .diabetes),
         ],
         coachingTier: .moderateTouch,
         coachingCallsCompleted: 4,
