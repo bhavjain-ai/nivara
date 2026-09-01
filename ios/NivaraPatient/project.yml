@@ -18,3 +18,10 @@ targets:
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        # Fill in your personal team ID so `xcodegen generate` doesn't wipe
+        # out signing every time it regenerates the .xcodeproj. Find it via
+        # Xcode > Settings > Accounts > (your Apple ID) > your team, or after
+        # signing once in Xcode's GUI: grep DEVELOPMENT_TEAM
+        # NivaraPatient.xcodeproj/project.pbxproj
+        # DEVELOPMENT_TEAM: "YOUR_TEAM_ID"
