@@ -4,7 +4,7 @@ import SwiftUI
 /// dashboard's Sidebar) plus a content area on the right showing whichever
 /// tab is selected.
 struct RootView: View {
-    @StateObject private var viewModel = PatientViewModel()
+    @EnvironmentObject private var viewModel: PatientViewModel
     @State private var selectedTab: AppTab = .home
 
     var body: some View {
@@ -29,7 +29,6 @@ struct RootView: View {
                 .animation(.easeInOut(duration: 0.25), value: viewModel.toast)
         }
         .background(NivaraColor.cream)
-        .environmentObject(viewModel)
         // The whole palette (cream/forest green) is designed as a light
         // theme only. Without this, system-drawn chrome (nav bar titles,
         // default label colors) still follows the device's Dark Mode
@@ -115,4 +114,6 @@ struct RootView: View {
 
 #Preview {
     RootView()
+        .environmentObject(PatientViewModel())
+        .environmentObject(OnboardingStore())
 }

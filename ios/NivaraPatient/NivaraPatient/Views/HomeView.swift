@@ -2,12 +2,17 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
     @Binding var selectedTab: AppTab
 
     private var profile: PatientProfile { viewModel.profile }
 
+    /// Prefers the name the patient typed during onboarding — the most
+    /// personalized thing we have — falling back to the bundled clinical
+    /// profile's name if onboarding was skipped.
     private var firstName: String {
-        profile.name.components(separatedBy: " ").first ?? profile.name
+        if !onboarding.firstName.isEmpty { return onboarding.firstName }
+        return profile.name.components(separatedBy: " ").first ?? profile.name
     }
 
     var body: some View {
@@ -219,5 +224,7 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView(selectedTab: .constant(.home)).environmentObject(PatientViewModel())
+    HomeView(selectedTab: .constant(.home))
+        .environmentObject(PatientViewModel())
+        .environmentObject(OnboardingStore())
 }

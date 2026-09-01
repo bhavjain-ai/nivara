@@ -66,6 +66,39 @@ already configured in `project.yml`).
    blood pressure cuff and glucose meter."*
 5. Set the deployment target to iOS 16.0.
 
+## First-run onboarding
+
+On a fresh install (or after clearing app data), the app opens into a
+5-phase guided setup instead of the main tabs — gated by
+`OnboardingStore.isComplete` (UserDefaults) in `NivaraPatientApp.swift`:
+
+1. **Welcome** — branded intro screen.
+2. **Basic info** — first name, last name, date of birth.
+3. **Consent** — both consent documents (Informed Consent & Service
+   Disclosure, and Data Use & Privacy Consent) as summary cards with a
+   "Read full consent" link to the complete text, each requiring its own
+   acceptance; plus the optional family-sharing opt-in. Full text lives in
+   `Models/ConsentDocuments.swift`.
+4. **Device setup** — a 5-step walkthrough (gather supplies → turn on
+   Bluetooth → connect the meter → confirm connection → take a first
+   reading) that drives the *same* `BLEManager`/`PatientViewModel` the rest
+   of the app uses, so a device paired here is already connected once you
+   reach Home. Each hardware-dependent step has a "Skip for now" escape
+   hatch. This is real BLE, not a scripted demo.
+5. **Complete** — if a reading came in during step 4, a dynamic
+   confirmation ("Your blood glucose is 90 mg/dL, which is within range.
+   Great job!"); otherwise a generic welcome.
+
+The name collected in step 2 becomes the Home screen's greeting name
+(falling back to the bundled demo patient's name if onboarding was
+skipped). This does not replace the bundled clinical profile (targets,
+medications, care team) — that's still physician-set demo data from
+`DemoPatientData.swift`, matching this build's self-contained-demo scope
+described below.
+
+To see onboarding again on a device that's already completed it, delete
+and reinstall the app (there's no in-app reset switch).
+
 ## Navigation
 
 The app uses a persistent left-side icon rail (mirroring the physician web
@@ -108,9 +141,12 @@ NivaraPatient/
     GlucoseMeasurementParser.swift
     BloodPressureMeasurementParser.swift
     BLEManager.swift            CoreBluetooth scan/connect/subscribe + parsing
-  ViewModels/                   VitalsStore (persisted history), PatientViewModel
+  ViewModels/                   VitalsStore (persisted history), PatientViewModel,
+                                 OnboardingStore (first-run flow state)
   Views/                        RootView (left rail), Home, MyHealth, CareTeam,
                                  ContactUs, Devices, and history/detail screens
+  Views/Onboarding/              Welcome, basic info, consent, guided device
+                                 setup, and completion screens
   Theme/                        Cream + forest green palette matching the
                                  Nivara brand (pitch deck / promotional materials)
 ```
