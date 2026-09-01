@@ -76,4 +76,14 @@ final class PatientViewModel: ObservableObject {
             latestGlucoseStatus = ClinicalGuidelines.analyzeGlucose(glucose: glucose.glucoseMgDl, sampleType: glucose.sampleType, targets: targets)
         }
     }
+
+    /// Whether the patient has logged at least one BP or glucose reading today
+    /// (BLE or otherwise) — drives the Home screen's "thank you" vs. "take a
+    /// measurement" prompt.
+    var tookReadingToday: Bool {
+        let calendar = Calendar.current
+        let bpToday = vitals.latestBP.map { calendar.isDateInToday($0.date) } ?? false
+        let glucoseToday = vitals.latestGlucose.map { calendar.isDateInToday($0.date) } ?? false
+        return bpToday || glucoseToday
+    }
 }

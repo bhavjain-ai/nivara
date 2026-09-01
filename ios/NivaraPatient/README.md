@@ -66,6 +66,23 @@ already configured in `project.yml`).
    blood pressure cuff and glucose meter."*
 5. Set the deployment target to iOS 16.0.
 
+## Navigation
+
+The app uses a persistent left-side icon rail (mirroring the physician web
+dashboard's Sidebar) rather than a bottom tab bar:
+
+- **Home** — time-of-day greeting, whether you've logged a reading today (with
+  a prompt to take one if not), and a shortcut into My Health.
+- **My Health** — your latest BP/glucose/HbA1c in large type, a trend chart
+  under each, your 5 most recent readings with a "See More" for full history,
+  and your medications.
+- **Care Team** — coaching tier, outreach call log, SMART goals.
+- **Contact Us** — physician, care coordinator, and Nivara support, each with
+  a tap-to-call/email button.
+
+Device pairing (Devices screen) is reached from Home's "Take a Measurement"
+prompt or the antenna icon on My Health, rather than being its own rail tab.
+
 ## Project layout
 
 ```
@@ -83,8 +100,10 @@ NivaraPatient/
     BloodPressureMeasurementParser.swift
     BLEManager.swift            CoreBluetooth scan/connect/subscribe + parsing
   ViewModels/                   VitalsStore (persisted history), PatientViewModel
-  Views/                        Home, History (charts), Devices, Medications, Care Team
-  Theme/                        Colors matching the web dashboard's navy (#1E3A5F)
+  Views/                        RootView (left rail), Home, MyHealth, CareTeam,
+                                 ContactUs, Devices, and history/detail screens
+  Theme/                        Cream + forest green palette matching the
+                                 Nivara brand (pitch deck / promotional materials)
 ```
 
 ## Testing with a real device
@@ -106,8 +125,9 @@ The Glucose Measurement characteristic doesn't carry an explicit "fasting"
 flag. The app infers post-meal only when the meter also sends a Glucose
 Measurement Context record with a "Meal" field populated; otherwise it
 defaults to fasting. If a meter doesn't send context records at all (many
-don't), every reading will show as fasting — retag it in the History tab if
-that's wrong. This mirrors how most consumer diabetes apps handle it.
+don't), every reading will show as fasting — retag the latest one from the
+Blood Glucose section of My Health if that's wrong. This mirrors how most
+consumer diabetes apps handle it.
 
 ## What's not wired up yet
 

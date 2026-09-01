@@ -66,6 +66,8 @@ struct DeviceConnectionView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(NivaraColor.cream)
         .navigationTitle("Devices")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -102,7 +104,7 @@ struct DeviceConnectionView: View {
         } label: {
             HStack {
                 Image(systemName: iconName(for: device.kind))
-                    .foregroundStyle(NivaraColor.navy)
+                    .foregroundStyle(NivaraColor.forestGreen)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(device.name)

@@ -2,14 +2,27 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @Binding var selectedTab: AppTab
 
     private var profile: PatientProfile { viewModel.profile }
+
+    private var firstName: String {
+        profile.name.components(separatedBy: " ").first ?? profile.name
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(NivaraDate.greeting()), \(firstName)")
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundStyle(NivaraColor.textPrimary)
+                        Text(Date(), style: .date)
+                            .font(.subheadline)
+                            .foregroundStyle(NivaraColor.textSecondary)
+                    }
+                    .padding(.top, 8)
 
                     if viewModel.justReceivedReading {
                         HStack(spacing: 6) {
@@ -17,166 +30,131 @@ struct HomeView: View {
                             Text("New reading synced from your device")
                         }
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(NivaraColor.normal)
+                        .foregroundStyle(NivaraColor.forestGreen)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(NivaraColor.normalBackground)
+                        .background(NivaraColor.sageGreen)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .transition(.opacity)
                     }
 
-                    connectionBanner
+                    measurementStatusCard
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("TODAY'S READINGS")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
+                    reviewTrendsCard
 
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                            if profile.conditions.contains(.hypertension) {
-                                if let bp = viewModel.vitals.latestBP {
-                                    VitalCard(
-                                        icon: "heart.fill",
-                                        title: "Blood Pressure",
-                                        value: "\(bp.systolic)/\(bp.diastolic)",
-                                        unit: "mmHg",
-                                        subLabel: NivaraDate.relative(bp.date),
-                                        status: viewModel.latestBPStatus
-                                    )
-                                } else {
-                                    emptyVitalCard(icon: "heart.fill", title: "Blood Pressure")
-                                }
-                            }
-
-                            if profile.conditions.contains(.diabetes) {
-                                if let glucose = viewModel.vitals.latestGlucose {
-                                    VitalCard(
-                                        icon: "drop.fill",
-                                        title: "Blood Glucose",
-                                        value: "\(glucose.glucoseMgDl)",
-                                        unit: "mg/dL",
-                                        subLabel: "\(glucose.sampleType.displayName) · \(NivaraDate.relative(glucose.date))",
-                                        status: viewModel.latestGlucoseStatus
-                                    )
-                                } else {
-                                    emptyVitalCard(icon: "drop.fill", title: "Blood Glucose")
-                                }
-                            }
-                        }
-
-                        if let hba1c = viewModel.vitals.latestHbA1c, let tier = profile.hba1cTier {
-                            VitalCard(
-                                icon: "testtube.2",
-                                title: "HbA1c",
-                                value: String(format: "%.1f", hba1c.value),
-                                unit: "%",
-                                subLabel: "Your target: \(tier.targetLabel)",
-                                status: nil
-                            )
-                        }
-                    }
-
-                    if let latestGoal = profile.smartGoals.first {
-                        goalPreview(latestGoal)
+                    if let goal = profile.smartGoals.first {
+                        goalPreview(goal)
                     }
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Hi, \(profile.name.components(separatedBy: " ").first ?? profile.name)")
-        }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(profile.conditions.map(\.rawValue).joined(separator: " + "))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text("Cared for by \(profile.physicianName)")
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
+            .background(NivaraColor.cream)
+            .navigationBarHidden(true)
         }
     }
 
     @ViewBuilder
-    private var connectionBanner: some View {
-        switch viewModel.bleManager.state {
-        case .connected(let name):
-            HStack(spacing: 6) {
-                Image(systemName: "dot.radiowaves.left.and.right")
-                Text("Connected to \(name)")
-                Spacer()
-            }
-            .font(.footnote.weight(.medium))
-            .foregroundStyle(NivaraColor.normal)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(NivaraColor.normalBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        default:
-            NavigationLink {
-                DeviceConnectionView()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                    Text("Connect your BP cuff or glucose meter")
-                    Spacer()
-                    Image(systemName: "chevron.right")
+    private var measurementStatusCard: some View {
+        if viewModel.tookReadingToday {
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title)
+                    .foregroundStyle(NivaraColor.forestGreen)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Thank you for taking your measurement today")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NivaraColor.textPrimary)
+                    Text("Your care team can see your latest reading.")
                         .font(.caption)
+                        .foregroundStyle(NivaraColor.textSecondary)
                 }
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(NivaraColor.navy)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(NivaraColor.navy.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
+            .nivaraCard()
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(NivaraColor.warning)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("You haven't taken a measurement yet today")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NivaraColor.textPrimary)
+                        Text("Connect your device to check your BP or glucose.")
+                            .font(.caption)
+                            .foregroundStyle(NivaraColor.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                NavigationLink {
+                    DeviceConnectionView()
+                } label: {
+                    Text("Take a Measurement")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(NivaraColor.forestGreen)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+            .nivaraCard()
         }
     }
 
-    private func emptyVitalCard(icon: String, title: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text("No reading yet")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
+    private var reviewTrendsCard: some View {
+        Button {
+            selectedTab = .myHealth
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "chart.xyaxis.line")
+                    .font(.title3)
+                    .foregroundStyle(NivaraColor.forestGreen)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Review your recent measurements")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NivaraColor.textPrimary)
+                    Text("See your latest readings and trends")
+                        .font(.caption)
+                        .foregroundStyle(NivaraColor.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NivaraColor.textSecondary)
+            }
+            .nivaraCard()
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .buttonStyle(.plain)
     }
 
     private func goalPreview(_ goal: SmartGoal) -> some View {
-        NavigationLink {
-            CareTeamView()
+        Button {
+            selectedTab = .careTeam
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Label("Your goal", systemImage: "target")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()
                     PillLabel(text: goal.status.rawValue, color: goal.status.color, background: goal.status.color.opacity(0.15))
                 }
                 Text(goal.description)
                     .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(NivaraColor.textPrimary)
                     .multilineTextAlignment(.leading)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .nivaraCard()
         }
         .buttonStyle(.plain)
     }
 }
 
 #Preview {
-    HomeView().environmentObject(PatientViewModel())
+    HomeView(selectedTab: .constant(.home)).environmentObject(PatientViewModel())
 }

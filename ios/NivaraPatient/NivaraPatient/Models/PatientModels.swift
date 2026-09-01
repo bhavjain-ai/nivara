@@ -100,6 +100,7 @@ struct SmartGoal: Identifiable, Codable, Equatable {
 struct PatientProfile {
     let name: String
     let physicianName: String
+    let physicianPhone: String
     let conditions: [Condition]
     let bpTarget: BPTarget?
     let hba1cTier: HbA1cTierInfo?

@@ -29,4 +29,13 @@ enum NivaraDate {
         let days = hours / 24
         return "\(days) day\(days == 1 ? "" : "s") ago"
     }
+
+    static func greeting(for date: Date = Date()) -> String {
+        let hour = Calendar.current.component(.hour, from: date)
+        switch hour {
+        case 0..<12: return "Good morning"
+        case 12..<17: return "Good afternoon"
+        default: return "Good evening"
+        }
+    }
 }

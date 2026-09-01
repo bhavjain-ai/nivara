@@ -12,6 +12,7 @@ enum DemoPatientData {
     static let patient = PatientProfile(
         name: "Anita Kumar",
         physicianName: "Dr. Sunita Rao",
+        physicianPhone: "+91-80000-99999",
         conditions: [.hypertension, .diabetes],
         bpTarget: BPTarget(
             systolic: 129,
@@ -67,14 +68,17 @@ enum DemoPatientData {
         ]
     )
 
-    /// Seed BP history so History charts aren't empty on first launch.
+    /// Seed BP history so History charts aren't empty on first launch. The most
+    /// recent seeded reading is dated yesterday (not today) so a fresh install
+    /// correctly shows the "take a measurement" prompt rather than "thanks for
+    /// measuring today" for a reading the patient never actually took.
     static let demoBPReadings: [BPReading] = {
         let values: [(Int, Int)] = [
             (138, 88), (134, 85), (136, 86), (132, 84), (130, 82),
             (128, 81), (131, 83), (127, 80), (126, 79), (129, 81),
         ]
         return values.enumerated().map { index, pair in
-            BPReading(date: daysAgo(values.count - 1 - index), systolic: pair.0, diastolic: pair.1, pulse: 76, source: .demo)
+            BPReading(date: daysAgo(values.count - index), systolic: pair.0, diastolic: pair.1, pulse: 76, source: .demo)
         }
     }()
 

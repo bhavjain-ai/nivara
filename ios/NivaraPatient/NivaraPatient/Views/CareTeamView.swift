@@ -21,7 +21,7 @@ struct CareTeamView: View {
                         }
 
                         ProgressView(value: Double(profile.coachingCallsCompleted), total: Double(profile.coachingCallsTarget))
-                            .tint(NivaraColor.navy)
+                            .tint(NivaraColor.forestGreen)
 
                         Text("\(profile.coachingCallsCompleted) of \(profile.coachingCallsTarget) check-in calls completed this program")
                             .font(.caption)
@@ -87,6 +87,8 @@ struct CareTeamView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(NivaraColor.cream)
             .navigationTitle("Care Team")
         }
     }

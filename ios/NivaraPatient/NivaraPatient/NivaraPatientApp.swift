@@ -4,7 +4,7 @@ import SwiftUI
 struct NivaraPatientApp: App {
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            RootView()
         }
     }
 }
