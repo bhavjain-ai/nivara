@@ -25,24 +25,56 @@ enum DemoPatientData {
             Medication(name: "Amlodipine", drugClass: "CCB", dose: "5 mg", frequency: "Once daily", startDate: daysAgo(60)),
             Medication(name: "Metformin (SR)", drugClass: "Biguanide", dose: "1000 mg", frequency: "Once daily, evening meal", startDate: daysAgo(60)),
         ],
+        medicationHistory: [
+            MedicationChange(date: daysAgo(60), description: "Started Telmisartan 40 mg + Amlodipine 5 mg (dual therapy)"),
+            MedicationChange(date: daysAgo(60), description: "Started Metformin (SR) 500 mg"),
+            MedicationChange(date: daysAgo(30), description: "Increased Metformin (SR) from 500 mg to 1000 mg"),
+        ],
         coachingTier: .moderateTouch,
         coachingCallsCompleted: 4,
         coachingCallsTarget: 8,
         outreachLog: [
             OutreachCall(
+                date: daysAgo(2),
+                coordinatorName: "Dr. Sunita Rao",
+                coordinatorRole: .physician,
+                callType: "Telemedicine Consult",
+                durationMin: 12,
+                topics: ["Medication Adherence"],
+                summary: "Reviewed your blood pressure trend and confirmed the current Telmisartan/Amlodipine dose is working well — no changes needed this visit."
+            ),
+            OutreachCall(
+                date: daysAgo(30),
+                coordinatorName: "Dr. Sunita Rao",
+                coordinatorRole: .physician,
+                callType: "Telemedicine Consult",
+                durationMin: 15,
+                topics: ["Medication Adherence"],
+                summary: "Fasting glucose still above target on Metformin 500 mg, so increased the dose to 1000 mg and asked for a recheck in 2 weeks."
+            ),
+            OutreachCall(
                 date: daysAgo(4),
                 coordinatorName: "Rohan Bhatt",
-                coordinatorRole: .lifestyleCoach,
+                coordinatorRole: .dietician,
                 callType: "Tier Check-in",
                 durationMin: 16,
                 topics: ["Diet", "Medication Adherence"],
                 summary: "Reviewed home-cooked meals and salt use; adherence to all 3 medications confirmed via weekly pillbox."
             ),
             OutreachCall(
+                date: daysAgo(18),
+                coordinatorName: "Rohan Bhatt",
+                coordinatorRole: .dietician,
+                callType: "Tier Check-in",
+                durationMin: 14,
+                topics: ["Diet"],
+                summary: "Set the sodium-reduction goal for the next two weeks and shared a low-salt Karnataka thali swap list."
+            ),
+            OutreachCall(
                 date: daysAgo(11),
-                coordinatorName: "Nurse Kavya Suresh",
-                coordinatorRole: .nurse,
-                callType: "Nurse Medication Check-in",
+                coordinatorName: "Kavya Suresh",
+                coordinatorRole: .coach,
+                callType: "Coach Check-in",
                 durationMin: 10,
                 topics: ["Medication Adherence", "Device/Monitoring Support"],
                 summary: "Walked through BP cuff placement and confirmed the Nivara app was pairing correctly over Bluetooth."

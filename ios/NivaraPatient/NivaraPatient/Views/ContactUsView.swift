@@ -5,8 +5,12 @@ struct ContactUsView: View {
 
     private var profile: PatientProfile { viewModel.profile }
 
+    /// The physician has their own card above, so this is scoped to the
+    /// dietician/coach roles to avoid showing the same person twice.
     private var mostRecentCoordinator: OutreachCall? {
-        profile.outreachLog.max(by: { $0.date < $1.date })
+        profile.outreachLog
+            .filter { $0.coordinatorRole != .physician }
+            .max(by: { $0.date < $1.date })
     }
 
     var body: some View {

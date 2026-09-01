@@ -23,6 +23,20 @@ struct Medication: Identifiable, Codable, Equatable {
     }
 }
 
+/// A single logged medication change (started, stopped, dose adjusted) shown
+/// in My Health's "Recent Changes" history under the current medication list.
+struct MedicationChange: Identifiable, Codable, Equatable {
+    let id: UUID
+    let date: Date
+    let description: String
+
+    init(id: UUID = UUID(), date: Date, description: String) {
+        self.id = id
+        self.date = date
+        self.description = description
+    }
+}
+
 enum CoachingTier: String, Codable {
     case highTouch = "High-touch"
     case moderateTouch = "Moderate-touch"
@@ -37,9 +51,21 @@ enum CoachingTier: String, Codable {
     }
 }
 
-enum CoordinatorRole: String, Codable {
-    case lifestyleCoach = "Lifestyle Coach"
-    case nurse = "Nurse"
+/// The three people on a patient's care team shown on the Care Team page.
+/// Declaration order here is also the display order (physician, dietician,
+/// coach).
+enum CoordinatorRole: String, Codable, CaseIterable {
+    case physician = "Physician"
+    case dietician = "Dietician"
+    case coach = "Coach"
+
+    var icon: String {
+        switch self {
+        case .physician: return "stethoscope"
+        case .dietician: return "leaf.fill"
+        case .coach: return "figure.walk"
+        }
+    }
 }
 
 struct OutreachCall: Identifiable, Codable, Equatable {
@@ -105,6 +131,7 @@ struct PatientProfile {
     let bpTarget: BPTarget?
     let hba1cTier: HbA1cTierInfo?
     let medications: [Medication]
+    let medicationHistory: [MedicationChange]
     let coachingTier: CoachingTier
     let coachingCallsCompleted: Int
     let coachingCallsTarget: Int

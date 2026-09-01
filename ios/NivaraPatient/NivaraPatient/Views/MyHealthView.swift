@@ -281,28 +281,53 @@ struct MyHealthView: View {
     // MARK: - Medications
 
     private var medicationsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Medications", icon: "pills.fill")
 
+            Text("CURRENT")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(NivaraColor.textSecondary)
+
             ForEach(profile.medications) { med in
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text(med.name).font(.subheadline.weight(.semibold)).foregroundStyle(NivaraColor.textPrimary)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(med.name)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(NivaraColor.textPrimary)
                         Spacer()
                         PillLabel(text: med.drugClass)
                     }
                     Text("\(med.dose) · \(med.frequency)")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(NivaraColor.textSecondary)
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
                 Divider()
             }
 
             Text("Prescribed by \(profile.physicianName)")
                 .font(.caption2)
                 .foregroundStyle(NivaraColor.textSecondary)
-                .padding(.top, 2)
+
+            if !profile.medicationHistory.isEmpty {
+                Text("RECENT CHANGES")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(NivaraColor.textSecondary)
+                    .padding(.top, 8)
+
+                let history = profile.medicationHistory.sorted { $0.date > $1.date }
+                ForEach(history) { change in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(NivaraDate.short.string(from: change.date))
+                            .font(.caption2)
+                            .foregroundStyle(NivaraColor.textSecondary)
+                        Text(change.description)
+                            .font(.subheadline)
+                            .foregroundStyle(NivaraColor.textPrimary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
         }
         .nivaraCard()
     }
