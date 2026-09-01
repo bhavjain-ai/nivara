@@ -17,6 +17,9 @@ struct ContactUsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    PageTitle(text: "Contact Us")
+                        .padding(.top, 8)
+
                     contactCard(
                         icon: "stethoscope",
                         title: "Your Physician",
@@ -47,9 +50,10 @@ struct ContactUsView: View {
                     emergencyNotice
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(NivaraColor.cream)
-            .navigationTitle("Contact Us")
+            .navigationBarHidden(true)
         }
     }
 

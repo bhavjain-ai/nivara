@@ -23,13 +23,16 @@ struct MedicationsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    PageTitle(text: "Medications")
+                        .padding(.top, 8)
                     currentMedicationsCard
                     recentChangesCard
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(NivaraColor.cream)
-            .navigationTitle("Medications")
+            .navigationBarHidden(true)
         }
     }
 

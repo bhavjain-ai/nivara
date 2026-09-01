@@ -24,14 +24,17 @@ struct CareTeamView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    PageTitle(text: "Care Team")
+                        .padding(.top, 8)
                     coachingProgressCard
                     teamCard
                     goalsSection
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(NivaraColor.cream)
-            .navigationTitle("Care Team")
+            .navigationBarHidden(true)
         }
         .sheet(item: $selectedMember) { member in
             CareTeamConversationView(member: member)

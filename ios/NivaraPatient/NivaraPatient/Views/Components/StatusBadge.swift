@@ -17,8 +17,12 @@ struct StatusBadge: View {
 
 struct PillLabel: View {
     let text: String
-    var color: Color = .secondary
-    var background: Color = Color(.tertiarySystemFill)
+    // Explicit palette colors, not system-adaptive ones (.secondary,
+    // Color(.tertiarySystemFill)) — those follow Dark Mode independently of
+    // our fixed cream/white card backgrounds and can end up nearly
+    // illegible (e.g. a light gray label on an already-light card).
+    var color: Color = NivaraColor.textSecondary
+    var background: Color = NivaraColor.sageGreen
 
     var body: some View {
         Text(text)

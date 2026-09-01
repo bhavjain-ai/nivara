@@ -2,8 +2,8 @@ import SwiftUI
 import Charts
 
 /// Focused on the initial (Type 2 diabetes) patient population: HbA1c and
-/// fasting blood glucose only. Blood pressure and medications have their own
-/// homes (BP would live here too once the hypertension population launches;
+/// blood glucose only. Blood pressure and medications have their own homes
+/// (BP would live here too once the hypertension population launches;
 /// medications are their own tab so patients aren't hunting for them at the
 /// bottom of a long page).
 struct MyHealthView: View {
@@ -11,42 +11,42 @@ struct MyHealthView: View {
 
     private var profile: PatientProfile { viewModel.profile }
 
-    private var fastingReadings: [GlucoseReading] {
-        viewModel.vitals.glucoseReadings.filter { $0.sampleType == .fasting }
-    }
+    @State private var selectedGlucoseDate: Date?
 
-    /// Status for the latest *fasting* reading specifically — not
-    /// `viewModel.latestGlucoseStatus`, which tracks the latest glucose
-    /// reading of any type and would mismatch the fasting value shown here
-    /// whenever the most recent reading overall was post-meal.
-    private var fastingStatus: VitalStatus? {
-        guard let latest = fastingReadings.last, let tier = profile.hba1cTier else { return nil }
-        let targets = ClinicalGuidelines.glucoseTargets(forTier: tier.tier)
-        return ClinicalGuidelines.analyzeGlucose(glucose: latest.glucoseMgDl, sampleType: .fasting, targets: targets)
+    /// Nearest reading to the finger's current x-position while scrubbing the
+    /// chart — nil (hides the overlay) once the drag ends.
+    private var selectedGlucoseReading: GlucoseReading? {
+        guard let selectedGlucoseDate else { return nil }
+        return viewModel.vitals.glucoseReadings.min {
+            abs($0.date.timeIntervalSince(selectedGlucoseDate)) < abs($1.date.timeIntervalSince(selectedGlucoseDate))
+        }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    HStack {
+                        PageTitle(text: "My Health")
+                        Spacer()
+                        NavigationLink {
+                            DeviceConnectionView()
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .font(.system(size: 18))
+                                .foregroundStyle(NivaraColor.forestGreen)
+                        }
+                    }
+                    .padding(.top, 8)
+
                     hba1cSection
-                    fastingGlucoseSection
+                    glucoseSection
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(NivaraColor.cream)
-            .navigationTitle("My Health")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink {
-                        DeviceConnectionView()
-                    } label: {
-                        Image(systemName: "antenna.radiowaves.left.and.right")
-                            .foregroundStyle(NivaraColor.forestGreen)
-                    }
-                }
-            }
+            .navigationBarHidden(true)
         }
     }
 
@@ -145,13 +145,17 @@ struct MyHealthView: View {
         }
     }
 
-    // MARK: - Fasting Glucose
+    // MARK: - Blood Glucose
 
-    private var fastingGlucoseSection: some View {
+    /// Shows every reading regardless of fasting/post-meal — meters can't
+    /// reliably tell the two apart from the signal alone, so classification
+    /// is a best guess the patient (or care team) can correct via
+    /// `retagRow`, not something the app should silently filter on.
+    private var glucoseSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Fasting Blood Glucose", icon: "drop.fill")
+            sectionHeader("Blood Glucose", icon: "drop.fill")
 
-            if let latest = fastingReadings.last {
+            if let latest = viewModel.vitals.latestGlucose {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(latest.glucoseMgDl)")
@@ -160,26 +164,26 @@ struct MyHealthView: View {
                         Text("mg/dL")
                             .font(.subheadline)
                             .foregroundStyle(NivaraColor.textSecondary)
+                        PillLabel(text: latest.sampleType.displayName)
                     }
                     Text(NivaraDate.relative(latest.date))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
-                    if let status = fastingStatus {
+                    if let status = viewModel.latestGlucoseStatus {
                         Text(status.message)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(status.level.color)
                     }
                 }
 
-                if fastingReadings.count > 1 {
-                    fastingChart
+                if viewModel.vitals.glucoseReadings.count > 1 {
+                    glucoseChart
+                    glucoseLegend
                 }
 
-                recentFastingReadings
+                recentGlucoseReadings
 
-                if let latestOverall = viewModel.vitals.latestGlucose {
-                    retagRow(for: latestOverall)
-                }
+                retagRow(for: latest)
             } else {
                 noReadingYet
             }
@@ -187,27 +191,93 @@ struct MyHealthView: View {
         .nivaraCard()
     }
 
-    private var fastingChart: some View {
+    private var glucoseChart: some View {
         Chart {
-            ForEach(fastingReadings) { reading in
+            ForEach(viewModel.vitals.glucoseReadings) { reading in
                 LineMark(x: .value("Date", reading.date), y: .value("Glucose", reading.glucoseMgDl))
-                    .foregroundStyle(NivaraColor.forestGreen.opacity(0.4))
+                    .foregroundStyle(NivaraColor.forestGreen.opacity(0.35))
                 PointMark(x: .value("Date", reading.date), y: .value("Glucose", reading.glucoseMgDl))
-                    .foregroundStyle(NivaraColor.forestGreen)
+                    .foregroundStyle(reading.sampleType == .fasting ? NivaraColor.forestGreen : NivaraColor.warning)
+            }
+
+            if let selected = selectedGlucoseReading {
+                RuleMark(x: .value("Date", selected.date))
+                    .foregroundStyle(NivaraColor.textSecondary.opacity(0.4))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                PointMark(x: .value("Date", selected.date), y: .value("Glucose", selected.glucoseMgDl))
+                    .foregroundStyle(NivaraColor.textPrimary)
+                    .symbolSize(120)
+                    .annotation(position: .top) {
+                        VStack(spacing: 2) {
+                            Text("\(selected.glucoseMgDl) mg/dL")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(NivaraColor.textPrimary)
+                            Text("\(selected.sampleType.displayName) · \(NivaraDate.shortWithTime.string(from: selected.date))")
+                                .font(.caption2)
+                                .foregroundStyle(NivaraColor.textSecondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(NivaraColor.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+                    }
             }
         }
-        .frame(height: 140)
+        .frame(height: 160)
         .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 3)) { _ in
+            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
                 AxisGridLine()
                 AxisValueLabel(format: .dateTime.day().month())
+            }
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle()
+                    .fill(.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let plotFrame = proxy.plotAreaFrame
+                                let origin = geometry[plotFrame].origin
+                                let x = value.location.x - origin.x
+                                if let date: Date = proxy.value(atX: x) {
+                                    selectedGlucoseDate = date
+                                }
+                            }
+                            .onEnded { _ in
+                                selectedGlucoseDate = nil
+                            }
+                    )
             }
         }
         .padding(.top, 4)
     }
 
-    private var recentFastingReadings: some View {
-        let recent = Array(fastingReadings.suffix(5).reversed())
+    private var glucoseLegend: some View {
+        HStack(spacing: 16) {
+            legendDot(color: NivaraColor.forestGreen, label: "Fasting")
+            legendDot(color: NivaraColor.warning, label: "Post-meal")
+            Spacer()
+            Text("Drag the graph to see a reading")
+                .font(.caption2)
+                .foregroundStyle(NivaraColor.textSecondary)
+        }
+        .padding(.top, 2)
+    }
+
+    private func legendDot(color: Color, label: String) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(NivaraColor.textSecondary)
+        }
+    }
+
+    private var recentGlucoseReadings: some View {
+        let recent = Array(viewModel.vitals.glucoseReadings.suffix(5).reversed())
         return VStack(alignment: .leading, spacing: 10) {
             Text("RECENT READINGS")
                 .font(.caption2.weight(.semibold))
@@ -220,6 +290,7 @@ struct MyHealthView: View {
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()
+                    PillLabel(text: reading.sampleType == .fasting ? "F" : "PP")
                     Text("\(reading.glucoseMgDl) mg/dL")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
@@ -227,7 +298,7 @@ struct MyHealthView: View {
                 Divider()
             }
 
-            if fastingReadings.count > 5 {
+            if viewModel.vitals.glucoseReadings.count > 5 {
                 NavigationLink {
                     GlucoseHistoryListView()
                 } label: {
@@ -240,9 +311,8 @@ struct MyHealthView: View {
     }
 
     /// Meters don't reliably signal fasting vs. post-meal, so the app guesses
-    /// — this lets the patient fix the most recent reading if it's wrong
-    /// (relevant here since a mis-tagged post-meal reading would otherwise
-    /// silently disappear from — or wrongly appear in — the fasting trend).
+    /// — this lets the patient fix the most recent reading if the tag (and
+    /// therefore which target range it's judged against) is wrong.
     private func retagRow(for reading: GlucoseReading) -> some View {
         HStack(spacing: 8) {
             Text("Latest reading tagged as \(reading.sampleType.displayName.lowercased()). Wrong?")

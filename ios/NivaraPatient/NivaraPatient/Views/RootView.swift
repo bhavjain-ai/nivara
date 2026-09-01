@@ -22,6 +22,12 @@ struct RootView: View {
         }
         .background(NivaraColor.cream)
         .environmentObject(viewModel)
+        // The whole palette (cream/forest green) is designed as a light
+        // theme only. Without this, system-drawn chrome (nav bar titles,
+        // default label colors) still follows the device's Dark Mode
+        // setting and renders light-on-light against our fixed colors —
+        // e.g. a white system title over a cream card.
+        .preferredColorScheme(.light)
     }
 
     private var sideRail: some View {

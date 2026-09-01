@@ -114,12 +114,19 @@ enum DemoPatientData {
         }
     }()
 
-    /// Seed glucose history — sparse, matching the individualized SMBG frequency
-    /// (not a flat daily test) that the titration protocol calls for.
+    /// Seed glucose history over ~30 days at the individualized RSSDI SMBG
+    /// cadence (roughly 4 tests/week, not a flat daily test), trending down
+    /// alongside the HbA1c improvement below. As with `demoBPReadings`, the
+    /// most recent seeded reading is dated yesterday so a fresh install
+    /// doesn't falsely claim a reading the patient never took today.
     static let demoGlucoseReadings: [GlucoseReading] = {
         let values: [(Int, Int, GlucoseSampleType)] = [
-            (8, 138, .fasting), (6, 145, .postMeal), (5, 132, .fasting),
-            (3, 128, .fasting), (1, 140, .postMeal),
+            (29, 152, .fasting), (27, 168, .postMeal), (25, 146, .fasting),
+            (23, 160, .postMeal), (21, 142, .fasting), (19, 150, .postMeal),
+            (17, 136, .fasting), (15, 145, .postMeal), (13, 130, .fasting),
+            (11, 140, .postMeal), (9, 128, .fasting), (7, 135, .postMeal),
+            (6, 124, .fasting), (4, 132, .postMeal), (3, 126, .fasting),
+            (1, 140, .postMeal),
         ]
         return values.map { offset, glucose, type in
             GlucoseReading(date: daysAgo(offset), glucoseMgDl: glucose, sampleType: type, source: .demo)
