@@ -28,7 +28,7 @@ enum DemoPatientData {
         medicationHistory: [
             MedicationChange(date: daysAgo(60), description: "Started Telmisartan 40 mg + Amlodipine 5 mg (dual therapy)", relatedCondition: .hypertension),
             MedicationChange(date: daysAgo(60), description: "Started Metformin (SR) 500 mg", relatedCondition: .diabetes),
-            MedicationChange(date: daysAgo(30), description: "Increased Metformin (SR) from 500 mg to 1000 mg", relatedCondition: .diabetes),
+            MedicationChange(date: daysAgo(25), description: "Increased Metformin (SR) from 500 mg to 1000 mg", relatedCondition: .diabetes),
         ],
         coachingTier: .moderateTouch,
         coachingCallsCompleted: 4,
@@ -44,7 +44,7 @@ enum DemoPatientData {
                 summary: "Reviewed your blood pressure trend and confirmed the current Telmisartan/Amlodipine dose is working well — no changes needed this visit."
             ),
             OutreachCall(
-                date: daysAgo(30),
+                date: daysAgo(25),
                 coordinatorName: "Dr. Sunita Rao",
                 coordinatorRole: .physician,
                 callType: "Telemedicine Consult",

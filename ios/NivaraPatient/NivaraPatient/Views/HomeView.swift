@@ -28,7 +28,13 @@ struct HomeView: View {
                         reassuranceCard(reassurance)
                     }
 
+                    if let lapseDays = viewModel.daysSinceLastGlucoseReading, lapseDays > 2 {
+                        lapseNudgeCard(days: lapseDays)
+                    }
+
                     measurementStatusCard
+
+                    consistencyCard
 
                     reviewTrendsCard
 
@@ -57,6 +63,58 @@ struct HomeView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(reassurance.level.color.opacity(0.3)))
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .transition(.opacity)
+    }
+
+    /// Shown when it's been more than 2 days since the last glucose reading —
+    /// a stronger, more specific signal than the daily "take a measurement"
+    /// prompt below, for a gap long enough it might warrant a check-in.
+    private func lapseNudgeCard(days: Int) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "bell.badge.fill")
+                .foregroundStyle(NivaraColor.warning)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Haven't seen a reading in \(days) days")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NivaraColor.textPrimary)
+                Text("Everything OK? Connect your meter when you get a chance.")
+                    .font(.caption)
+                    .foregroundStyle(NivaraColor.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(NivaraColor.warningBackground)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NivaraColor.warning.opacity(0.3)))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Consistency framing tends to land better with patients than another
+    /// raw mg/dL number — "on track with your routine" over a data point.
+    private var consistencyCard: some View {
+        let count = viewModel.readingsThisWeek
+        return HStack(spacing: 12) {
+            Image(systemName: count >= 3 ? "flame.fill" : "flag.checkered")
+                .font(.title3)
+                .foregroundStyle(NivaraColor.forestGreen)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(count) reading\(count == 1 ? "" : "s") this week")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NivaraColor.textPrimary)
+                Text(consistencyMessage(for: count))
+                    .font(.caption)
+                    .foregroundStyle(NivaraColor.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .nivaraCard()
+    }
+
+    private func consistencyMessage(for count: Int) -> String {
+        switch count {
+        case 0: return "Let's get your first reading in this week."
+        case 1...2: return "Good start — keep it going."
+        default: return "Right on track with your testing routine."
+        }
     }
 
     @ViewBuilder

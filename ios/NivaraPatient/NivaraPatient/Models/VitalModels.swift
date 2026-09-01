@@ -112,3 +112,18 @@ struct PostMeasurementMessage: Equatable {
     let level: VitalStatusLevel
     let text: String
 }
+
+/// A brief, self-dismissing confirmation banner — distinct from
+/// `PostMeasurementMessage` (a clinical reassurance) in that this only
+/// confirms the mechanical fact that a reading was captured and saved to
+/// history, so a patient watching the screen has something concrete to
+/// point to if a reading ever seems to have gone missing.
+struct ToastMessage: Identifiable, Equatable {
+    let id: UUID
+    let text: String
+
+    init(id: UUID = UUID(), text: String) {
+        self.id = id
+        self.text = text
+    }
+}

@@ -22,6 +22,44 @@ struct MyHealthView: View {
         }
     }
 
+    /// A short "since your last A1C" line — patients respond better to a
+    /// direction of travel than to sitting and comparing two raw numbers.
+    /// Lower is the improving direction for A1C, so a drop is shown in green
+    /// and a rise in amber.
+    private var hba1cTrend: (text: String, color: Color)? {
+        let readings = viewModel.vitals.hba1cReadings
+        guard readings.count > 1 else { return nil }
+        let delta = readings[readings.count - 1].value - readings[readings.count - 2].value
+        if abs(delta) < 0.05 { return ("Unchanged since your last A1C", NivaraColor.textSecondary) }
+        let arrow = delta < 0 ? "↓" : "↑"
+        let text = "\(arrow) \(String(format: "%.1f", abs(delta)))% since your last A1C"
+        return (text, delta < 0 ? NivaraColor.forestGreen : NivaraColor.warning)
+    }
+
+    /// "X of last N readings in range" — a quick consistency read on the
+    /// most recent handful of glucose readings, each judged against its own
+    /// tagged sample type.
+    private var glucoseInRangeSummary: (text: String, color: Color)? {
+        guard let tier = profile.hba1cTier else { return nil }
+        let recent = Array(viewModel.vitals.glucoseReadings.suffix(5))
+        guard !recent.isEmpty else { return nil }
+        let targets = ClinicalGuidelines.glucoseTargets(forTier: tier.tier)
+        let inRange = recent.filter {
+            ClinicalGuidelines.analyzeGlucose(glucose: $0.glucoseMgDl, sampleType: $0.sampleType, targets: targets).level == .normal
+        }.count
+        let text = "\(inRange) of last \(recent.count) readings in range"
+        return (text, inRange == recent.count ? NivaraColor.forestGreen : NivaraColor.warning)
+    }
+
+    /// Diabetes medication changes that fall inside the currently plotted
+    /// glucose date range — filtered (rather than showing all history) so a
+    /// change from months ago doesn't stretch the chart's x-axis domain out
+    /// and flatten the recent trend.
+    private var visibleMedicationChanges: [MedicationChange] {
+        guard let earliest = viewModel.vitals.glucoseReadings.first?.date else { return [] }
+        return profile.medicationHistory.filter { $0.relatedCondition == .diabetes && $0.date >= earliest }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -73,6 +111,11 @@ struct MyHealthView: View {
                         Text("Your target: \(tier.targetLabel)")
                             .font(.caption2)
                             .foregroundStyle(NivaraColor.textSecondary)
+                    }
+                    if let trend = hba1cTrend {
+                        Text(trend.text)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(trend.color)
                     }
                 }
 
@@ -174,6 +217,11 @@ struct MyHealthView: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(status.level.color)
                     }
+                    if let summary = glucoseInRangeSummary {
+                        Text(summary.text)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(summary.color)
+                    }
                 }
 
                 if viewModel.vitals.glucoseReadings.count > 1 {
@@ -198,6 +246,17 @@ struct MyHealthView: View {
                     .foregroundStyle(NivaraColor.forestGreen.opacity(0.35))
                 PointMark(x: .value("Date", reading.date), y: .value("Glucose", reading.glucoseMgDl))
                     .foregroundStyle(reading.sampleType == .fasting ? NivaraColor.forestGreen : NivaraColor.warning)
+            }
+
+            ForEach(visibleMedicationChanges) { change in
+                RuleMark(x: .value("Date", change.date))
+                    .foregroundStyle(NivaraColor.textSecondary.opacity(0.35))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                    .annotation(position: .top) {
+                        Image(systemName: "pill.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(NivaraColor.textSecondary)
+                    }
             }
 
             if let selected = selectedGlucoseReading {
@@ -256,13 +315,20 @@ struct MyHealthView: View {
     }
 
     private var glucoseLegend: some View {
-        HStack(spacing: 16) {
-            legendDot(color: NivaraColor.forestGreen, label: "Fasting")
-            legendDot(color: NivaraColor.warning, label: "Post-meal")
-            Spacer()
-            Text("Drag the graph to see a reading")
-                .font(.caption2)
-                .foregroundStyle(NivaraColor.textSecondary)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 16) {
+                legendDot(color: NivaraColor.forestGreen, label: "Fasting")
+                legendDot(color: NivaraColor.warning, label: "Post-meal")
+                Spacer()
+                Text("Drag the graph to see a reading")
+                    .font(.caption2)
+                    .foregroundStyle(NivaraColor.textSecondary)
+            }
+            if !visibleMedicationChanges.isEmpty {
+                Label("Dashed line marks a medication change", systemImage: "pill.fill")
+                    .font(.caption2)
+                    .foregroundStyle(NivaraColor.textSecondary)
+            }
         }
         .padding(.top, 2)
     }

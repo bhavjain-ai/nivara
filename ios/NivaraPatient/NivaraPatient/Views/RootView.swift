@@ -19,6 +19,14 @@ struct RootView: View {
             sideRail
             contentArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .bottom) {
+                    if let toast = viewModel.toast {
+                        ToastBanner(message: toast)
+                            .padding(.bottom, 24)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .animation(.easeInOut(duration: 0.25), value: viewModel.toast)
         }
         .background(NivaraColor.cream)
         .environmentObject(viewModel)
@@ -28,6 +36,22 @@ struct RootView: View {
         // setting and renders light-on-light against our fixed colors —
         // e.g. a white system title over a cream card.
         .preferredColorScheme(.light)
+        .sheet(item: mealTimingConfirmationBinding) { reading in
+            MealTimingConfirmationView(reading: reading)
+        }
+    }
+
+    /// `pendingMealTimingConfirmation` is intentionally read-only outside
+    /// PatientViewModel; `.sheet(item:)` needs a two-way Binding, so this
+    /// adapts it — a manual dismissal (swipe-down) routes back through
+    /// `dismissMealTimingConfirmation()` just like the sheet's own buttons.
+    private var mealTimingConfirmationBinding: Binding<GlucoseReading?> {
+        Binding(
+            get: { viewModel.pendingMealTimingConfirmation },
+            set: { newValue in
+                if newValue == nil { viewModel.dismissMealTimingConfirmation() }
+            }
+        )
     }
 
     private var sideRail: some View {
