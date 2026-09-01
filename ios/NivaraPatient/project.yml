@@ -9,8 +9,6 @@ targets:
     platform: iOS
     sources:
       - NivaraPatient
-    info:
-      path: NivaraPatient/Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nivara.patient
@@ -19,10 +17,21 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
-        # Force Xcode to use ONLY NivaraPatient/Info.plist (with our
-        # UILaunchScreen key) rather than auto-generating a competing one
-        # from INFOPLIST_KEY_* build settings, which don't include it.
-        GENERATE_INFOPLIST_FILE: "NO"
+        # This Xcode version keeps forcing a build-setting-generated
+        # Info.plist regardless of GENERATE_INFOPLIST_FILE=NO + a physical
+        # file (it was silently rewriting NivaraPatient/Info.plist back to
+        # its own template on every open/build, dropping our custom keys —
+        # including UILaunchScreen, which caused the app to render
+        # letterboxed at an old fixed size). Instead of fighting that,
+        # go all-in on generated mode and supply everything as
+        # INFOPLIST_KEY_* build settings, which Xcode's generator reads
+        # directly no matter what triggers a regeneration.
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_CFBundleDisplayName: "Nivara"
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter."
+        INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription: "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter."
         # Fill in your personal team ID so `xcodegen generate` doesn't wipe
         # out signing every time it regenerates the .xcodeproj. Find it via
         # Xcode > Settings > Accounts > (your Apple ID) > your team, or after
