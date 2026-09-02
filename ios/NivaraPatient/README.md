@@ -77,8 +77,12 @@ On a fresh install (or after clearing app data), the app opens into a
 3. **Consent** — both consent documents (Informed Consent & Service
    Disclosure, and Data Use & Privacy Consent) as summary cards with a
    "Read full consent" link to the complete text, each requiring its own
-   acceptance; plus the optional family-sharing opt-in. Full text lives in
-   `Models/ConsentDocuments.swift`.
+   acceptance; plus the optional family-sharing opt-in (name, relationship,
+   and phone number — required once the opt-in is on, so the care team has
+   an actual way to reach that person). Each document's "I agree" toggle
+   stays disabled until the patient has scrolled to the bottom of that
+   document's full text in its sheet, checked fresh every time this screen
+   is (re)entered. Full text lives in `Models/ConsentDocuments.swift`.
 4. **Device setup** — a 5-step walkthrough (gather supplies → turn on
    Bluetooth → connect the meter → confirm connection → take a first
    reading) that drives the *same* `BLEManager`/`PatientViewModel` the rest
@@ -98,6 +102,22 @@ described below.
 
 To see onboarding again on a device that's already completed it, delete
 and reinstall the app (there's no in-app reset switch).
+
+## Device identity (no SMS/OTP)
+
+`Services/DeviceIdentity.swift` mints a random UUID on first launch and
+stores it in the iOS Keychain — unlike UserDefaults or the Documents
+directory, Keychain data survives the app being deleted and reinstalled.
+This is the client-side building block for linking an account to "this
+device" the way WhatsApp links to a phone number, without standing up an
+SMS/OTP provider: a backend registration endpoint would receive this value
+once at enrollment and recognize the device on later launches. There's no
+backend in this repo yet, so nothing currently sends it anywhere — it's
+surfaced read-only on the Contact Us page (`deviceInfoCard`) for now. See
+the doc comment on `DeviceIdentity` for what this is (and isn't) — notably,
+it's not `identifierForVendor` (which resets on reinstall, defeating the
+point) and it's not a fraud-proof hardware attestation (pair it with
+Apple's DeviceCheck/App Attest server-side if that's needed later).
 
 ## Navigation
 

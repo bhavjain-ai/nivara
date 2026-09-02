@@ -34,12 +34,23 @@ final class OnboardingStore: ObservableObject {
     @Published var familyMemberRelationship: String {
         didSet { defaults.set(familyMemberRelationship, forKey: Keys.familyMemberRelationship) }
     }
+    @Published var familyMemberPhone: String {
+        didSet { defaults.set(familyMemberPhone, forKey: Keys.familyMemberPhone) }
+    }
 
     /// Both consent documents must be explicitly accepted before device
     /// setup — mirrors the two separate paper forms this replaces, which
-    /// each require their own signature.
+    /// each require their own signature. If the patient opts into family
+    /// sharing, a name and phone number are required too — an opt-in the
+    /// care team can't act on without a way to actually reach that person
+    /// isn't much of an opt-in.
     var canProceedPastConsent: Bool {
-        acceptedInformedConsent && acceptedPrivacyConsent
+        guard acceptedInformedConsent && acceptedPrivacyConsent else { return false }
+        if shareWithFamilyMember {
+            return !familyMemberName.trimmingCharacters(in: .whitespaces).isEmpty &&
+                !familyMemberPhone.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        return true
     }
 
     private let defaults: UserDefaults
@@ -54,6 +65,7 @@ final class OnboardingStore: ObservableObject {
         static let shareWithFamilyMember = "onboarding.shareWithFamilyMember"
         static let familyMemberName = "onboarding.familyMemberName"
         static let familyMemberRelationship = "onboarding.familyMemberRelationship"
+        static let familyMemberPhone = "onboarding.familyMemberPhone"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -67,6 +79,7 @@ final class OnboardingStore: ObservableObject {
         shareWithFamilyMember = defaults.bool(forKey: Keys.shareWithFamilyMember)
         familyMemberName = defaults.string(forKey: Keys.familyMemberName) ?? ""
         familyMemberRelationship = defaults.string(forKey: Keys.familyMemberRelationship) ?? ""
+        familyMemberPhone = defaults.string(forKey: Keys.familyMemberPhone) ?? ""
     }
 
     func markComplete() {

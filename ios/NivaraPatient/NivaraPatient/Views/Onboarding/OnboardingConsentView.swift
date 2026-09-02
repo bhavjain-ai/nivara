@@ -5,6 +5,13 @@ import SwiftUI
 /// requiring its own explicit acceptance — mirrors the two separate paper
 /// forms this replaces rather than collapsing them into one blanket
 /// checkbox.
+///
+/// Each document's "I agree" toggle stays disabled until the patient has
+/// scrolled to the bottom of that document's full text (see
+/// ConsentDocumentSheet's `onReachedBottom`) — this is checked fresh every
+/// time this screen appears (including navigating back to it), so a patient
+/// can't toggle agreement without actually having scrolled through in this
+/// visit.
 struct OnboardingConsentView: View {
     @EnvironmentObject private var onboarding: OnboardingStore
     let onNext: () -> Void
@@ -12,6 +19,8 @@ struct OnboardingConsentView: View {
 
     @State private var showingInformedConsent = false
     @State private var showingPrivacyConsent = false
+    @State private var hasReadInformedConsent = false
+    @State private var hasReadPrivacyConsent = false
 
     var body: some View {
         OnboardingScaffold(
@@ -25,12 +34,14 @@ struct OnboardingConsentView: View {
                 consentCard(
                     title: ConsentDocuments.informedConsentTitle,
                     summary: ConsentDocuments.informedConsentSummary,
+                    hasRead: hasReadInformedConsent,
                     isAccepted: $onboarding.acceptedInformedConsent,
                     showFullText: { showingInformedConsent = true }
                 )
                 consentCard(
                     title: ConsentDocuments.privacyConsentTitle,
                     summary: ConsentDocuments.privacyConsentSummary,
+                    hasRead: hasReadPrivacyConsent,
                     isAccepted: $onboarding.acceptedPrivacyConsent,
                     showFullText: { showingPrivacyConsent = true }
                 )
@@ -39,15 +50,33 @@ struct OnboardingConsentView: View {
         } footer: {
             OnboardingPrimaryButton(title: "I Agree — Next", enabled: onboarding.canProceedPastConsent, action: onNext)
         }
+        .onAppear {
+            // Force a fresh read-and-accept every time this screen is
+            // (re)entered, including via the back button from device setup
+            // — a previously-granted acceptance shouldn't silently carry
+            // over without the patient having scrolled through again now.
+            onboarding.acceptedInformedConsent = false
+            onboarding.acceptedPrivacyConsent = false
+            hasReadInformedConsent = false
+            hasReadPrivacyConsent = false
+        }
         .sheet(isPresented: $showingInformedConsent) {
-            ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle, sections: ConsentDocuments.informedConsentSections)
+            ConsentDocumentSheet(
+                title: ConsentDocuments.informedConsentTitle,
+                sections: ConsentDocuments.informedConsentSections,
+                onReachedBottom: { hasReadInformedConsent = true }
+            )
         }
         .sheet(isPresented: $showingPrivacyConsent) {
-            ConsentDocumentSheet(title: ConsentDocuments.privacyConsentTitle, sections: ConsentDocuments.privacyConsentSections)
+            ConsentDocumentSheet(
+                title: ConsentDocuments.privacyConsentTitle,
+                sections: ConsentDocuments.privacyConsentSections,
+                onReachedBottom: { hasReadPrivacyConsent = true }
+            )
         }
     }
 
-    private func consentCard(title: String, summary: String, isAccepted: Binding<Bool>, showFullText: @escaping () -> Void) -> some View {
+    private func consentCard(title: String, summary: String, hasRead: Bool, isAccepted: Binding<Bool>, showFullText: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.subheadline.weight(.bold))
@@ -62,12 +91,21 @@ struct OnboardingConsentView: View {
             }
             .buttonStyle(.plain)
 
+            HStack(spacing: 6) {
+                Image(systemName: hasRead ? "checkmark.circle.fill" : "arrow.down.circle")
+                    .foregroundStyle(hasRead ? NivaraColor.forestGreen : NivaraColor.textSecondary)
+                Text(hasRead ? "Reviewed — you can agree below" : "Scroll to the end of the full consent to continue")
+                    .font(.caption2)
+                    .foregroundStyle(hasRead ? NivaraColor.forestGreen : NivaraColor.textSecondary)
+            }
+
             Toggle(isOn: isAccepted) {
                 Text("I have read and agree to this consent")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(NivaraColor.textPrimary)
+                    .foregroundStyle(hasRead ? NivaraColor.textPrimary : NivaraColor.textSecondary)
             }
             .tint(NivaraColor.forestGreen)
+            .disabled(!hasRead)
         }
         .padding(14)
         .background(NivaraColor.surface)
@@ -101,6 +139,14 @@ struct OnboardingConsentView: View {
                     .padding(10)
                     .background(NivaraColor.cream)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                TextField("Phone number", text: $onboarding.familyMemberPhone)
+                    .keyboardType(.phonePad)
+                    .padding(10)
+                    .background(NivaraColor.cream)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Text("So your care team has a way to reach them if needed.")
+                    .font(.caption2)
+                    .foregroundStyle(NivaraColor.textSecondary)
             }
         }
         .padding(14)

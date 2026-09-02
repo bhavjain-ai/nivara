@@ -44,10 +44,13 @@ struct ContactUsView: View {
                         name: "Nivara Health Support Team",
                         subtitle: "Mon–Sat, 9am–7pm IST",
                         phone: "+91-80000-00000",
-                        email: "support@nivarahealth.com"
+                        email: "support@nivarahealth.com",
+                        whatsapp: "+91-80000-00000"
                     )
 
                     emergencyNotice
+
+                    deviceInfoCard
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -57,7 +60,7 @@ struct ContactUsView: View {
         }
     }
 
-    private func contactCard(icon: String, title: String, name: String, subtitle: String, phone: String?, email: String? = nil) -> some View {
+    private func contactCard(icon: String, title: String, name: String, subtitle: String, phone: String?, email: String? = nil, whatsapp: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon)
                 .font(.caption.weight(.semibold))
@@ -81,6 +84,16 @@ struct ContactUsView: View {
                         contactButton(icon: "envelope.fill", label: "Email")
                     }
                 }
+                // wa.me deep links into the WhatsApp app if installed, or a
+                // web fallback otherwise — this leaves the app for WhatsApp
+                // (there's no way to embed WhatsApp's own chat UI inside a
+                // third-party app), same as tel:/mailto: leave it for the
+                // Phone/Mail apps above.
+                if let whatsapp, let url = URL(string: "https://wa.me/\(whatsapp.filter { $0.isNumber })") {
+                    Link(destination: url) {
+                        contactButton(icon: "message.fill", label: "WhatsApp")
+                    }
+                }
             }
             .padding(.top, 2)
         }
@@ -98,6 +111,26 @@ struct ContactUsView: View {
         .padding(.vertical, 8)
         .background(NivaraColor.sageGreen)
         .clipShape(Capsule())
+    }
+
+    /// Surfaces `DeviceIdentity.current` for support/debugging purposes —
+    /// this is the identifier a backend would use to recognize "this
+    /// device" on re-launch without an SMS/OTP flow (see DeviceIdentity.swift
+    /// for the full rationale). Nothing sends it anywhere in this
+    /// self-contained demo build; it's shown here so it's inspectable.
+    private var deviceInfoCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("About This Device", systemImage: "iphone")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NivaraColor.forestGreen)
+            Text("Device ID: \(String(DeviceIdentity.current.prefix(8)))…")
+                .font(.caption)
+                .foregroundStyle(NivaraColor.textSecondary)
+            Text("If you contact support, they may ask for this ID to help locate your account.")
+                .font(.caption2)
+                .foregroundStyle(NivaraColor.textSecondary)
+        }
+        .nivaraCard()
     }
 
     private var emergencyNotice: some View {

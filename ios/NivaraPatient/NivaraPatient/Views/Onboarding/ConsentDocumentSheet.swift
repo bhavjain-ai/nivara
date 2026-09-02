@@ -2,9 +2,14 @@ import SwiftUI
 
 /// The full text of one consent document, presented as a sheet so a patient
 /// can read the whole thing (not just the on-screen summary) before agreeing.
+/// Calls `onReachedBottom` once an invisible marker after the last section
+/// scrolls into view — the signal OnboardingConsentView uses to unlock that
+/// document's "I agree" toggle, so agreement isn't possible without at least
+/// scrolling all the way through.
 struct ConsentDocumentSheet: View {
     let title: String
     let sections: [ConsentSection]
+    var onReachedBottom: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
 
@@ -24,6 +29,10 @@ struct ConsentDocumentSheet: View {
                                 .foregroundStyle(NivaraColor.textSecondary)
                         }
                     }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .onAppear { onReachedBottom?() }
                 }
                 .padding()
             }
