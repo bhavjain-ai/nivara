@@ -3,12 +3,19 @@ options:
   bundleIdPrefix: com.nivara
   deploymentTarget:
     iOS: "16.0"
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.0.0"
 targets:
   NivaraPatient:
     type: application
     platform: iOS
     sources:
       - NivaraPatient
+    dependencies:
+      - package: Supabase
+        product: Supabase
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nivara.patient

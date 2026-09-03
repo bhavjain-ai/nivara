@@ -49,9 +49,19 @@ struct OnboardingCompleteView: View {
 
                 Spacer()
 
-                OnboardingPrimaryButton(title: "Go to Nivara", action: onDone)
-                    .padding(.horizontal, 28)
-                    .padding(.bottom, 40)
+                OnboardingPrimaryButton(title: "Go to Nivara") {
+                    // Fire-and-forget: registration is best-effort (see
+                    // SupabaseService.registerPatient) and must never delay
+                    // or block getting into the main app, whether that's
+                    // because there's no network right now or because no
+                    // Supabase project has been configured at all yet.
+                    Task {
+                        await SupabaseService.registerPatient(onboarding: onboarding, demoProfile: viewModel.profile)
+                    }
+                    onDone()
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 40)
             }
         }
     }

@@ -103,21 +103,30 @@ described below.
 To see onboarding again on a device that's already completed it, delete
 and reinstall the app (there's no in-app reset switch).
 
-## Device identity (no SMS/OTP)
+## Device identity + backend (no SMS/OTP)
 
 `Services/DeviceIdentity.swift` mints a random UUID on first launch and
 stores it in the iOS Keychain — unlike UserDefaults or the Documents
 directory, Keychain data survives the app being deleted and reinstalled.
 This is the client-side building block for linking an account to "this
 device" the way WhatsApp links to a phone number, without standing up an
-SMS/OTP provider: a backend registration endpoint would receive this value
-once at enrollment and recognize the device on later launches. There's no
-backend in this repo yet, so nothing currently sends it anywhere — it's
-surfaced read-only on the Contact Us page (`deviceInfoCard`) for now. See
-the doc comment on `DeviceIdentity` for what this is (and isn't) — notably,
-it's not `identifierForVendor` (which resets on reinstall, defeating the
-point) and it's not a fraud-proof hardware attestation (pair it with
-Apple's DeviceCheck/App Attest server-side if that's needed later).
+SMS/OTP provider. See the doc comment on `DeviceIdentity` for what this is
+(and isn't) — notably, it's not `identifierForVendor` (which resets on
+reinstall, defeating the point) and it's not a fraud-proof hardware
+attestation (pair it with Apple's DeviceCheck/App Attest server-side if
+that's needed later).
+
+The actual registration/linking now has a real backend: Supabase. Patients
+authenticate via Supabase Anonymous Auth (no email/phone/OTP), and
+`Services/SupabaseService.swift` registers a `patients` row — linked to both
+the anonymous auth session and `DeviceIdentity.current` — right after
+onboarding's consent step. `DeviceIdentity` is stored as a secondary
+fingerprint for support-assisted recovery; the anonymous auth session
+(itself Keychain-persisted by the Supabase SDK) is the actual thing Row
+Level Security checks. **See [`SUPABASE_SETUP.md`](../../SUPABASE_SETUP.md)
+at the repo root to configure this** — everything in the app keeps working
+on local/demo data if you skip it entirely; `SupabaseConfig.isConfigured`
+gates every call.
 
 ## Navigation
 
@@ -136,9 +145,11 @@ dashboard's Sidebar) rather than a bottom tab bar:
 - **Medications** — your current Type 2 diabetes regimen in large type, with
   a "Recent Changes" history underneath so it's obvious what's different.
 - **Care Team** — your physician, dietician, and coach as tappable avatar
-  cards; each opens a chat-thread-style read of every logged contact with
-  that person. A "Got a Question? Contact Us" button and your SMART goals
-  sit below.
+  cards; each opens a thread showing every logged contact with that person,
+  plus a real, live two-way message composer underneath (backed by
+  Supabase — see above; disabled with an explanatory note if no Supabase
+  project is configured). A "Got a Question? Contact Us" button and your
+  SMART goals sit below.
 - **Contact Us** — physician, care coordinator, and Nivara support, each with
   a tap-to-call/email button.
 
@@ -162,7 +173,11 @@ NivaraPatient/
     BloodPressureMeasurementParser.swift
     BLEManager.swift            CoreBluetooth scan/connect/subscribe + parsing
   ViewModels/                   VitalsStore (persisted history), PatientViewModel,
-                                 OnboardingStore (first-run flow state)
+                                 OnboardingStore (first-run flow state),
+                                 ChatViewModel (live Care Team messaging)
+  Services/                     DeviceIdentity (Keychain UUID), SupabaseService
+                                 (anonymous auth + registration), SupabaseConfig
+                                 (gitignored — see SUPABASE_SETUP.md)
   Views/                        RootView (left rail), Home, MyHealth, CareTeam,
                                  ContactUs, Devices, and history/detail screens
   Views/Onboarding/              Welcome, basic info, consent, guided device
@@ -196,12 +211,21 @@ consumer diabetes apps handle it.
 
 ## What's not wired up yet
 
-- No login / multi-patient support — this build is one bundled demo patient.
-- No sync back to the Nivara backend — readings are stored locally
+- Device-linked registration and Care Team chat now talk to a real backend
+  (Supabase — see "Device identity + backend" above and
+  `SUPABASE_SETUP.md`). Everything else below is still local-only.
+- No sync back to Supabase for vitals — readings are stored locally
   (`Documents/bp_readings.json`, `glucose_readings.json`) via `VitalsStore`.
-  Wiring that up would mean POSTing to something like `/api/bp-reading` (which
-  already exists in the web app) plus a glucose equivalent, and adding a way
-  to identify which patient this device belongs to.
+  The schema (`supabase/migrations/0001_init.sql`) already has
+  `glucose_readings`/`bp_readings`/`hba1c_readings` tables scoped to each
+  patient by Row Level Security; wiring `VitalsStore.addGlucoseReading`/
+  `addBPReading` to also insert there is the natural next step, alongside
+  the physician web dashboard's existing `/api/bp-reading` (which still
+  writes to a flat JSON file, not Supabase, as of this integration).
+- Medications, care-team roster, and SMART goals are still bundled demo
+  data (`DemoPatientData.swift`) — the schema supports them (physician/staff
+  writable via the service role key), but nothing populates or reads those
+  tables from the app yet.
 - Physician-facing titration/escalation logic (from the web dashboard's
   `htn-titration.ts` / `diabetes-titration.ts`) intentionally isn't exposed
   here — recommending medication changes to a patient directly isn't
