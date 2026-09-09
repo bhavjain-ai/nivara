@@ -18,6 +18,13 @@ final class BLEManager: NSObject, ObservableObject {
         case idle
         case scanning
         case connecting(String)
+        /// Omron only: BLE-connected, but still working through the
+        /// proprietary handshake/read in the background — see
+        /// OmronBLEHandler. The associated string is a human-readable
+        /// progress step, so a stuck connection is visibly stuck
+        /// *somewhere specific* rather than indistinguishable from one
+        /// that's silently working.
+        case readingOmronHistory(String)
         case connected(String)
         case failed(String)
     }
@@ -110,6 +117,18 @@ final class BLEManager: NSObject, ObservableObject {
     private func handleOmronConnection(peripheral: CBPeripheral, service: CBService) {
         let handler = OmronBLEHandler()
         omronHandlers[peripheral.identifier] = handler
+        let deviceName = peripheral.name ?? "Omron cuff"
+        handler.onProgress = { [weak self] message in
+            // OmronBLEHandler isn't @MainActor-isolated, so code resuming
+            // after an `await` inside it (unlike BLEManager's own
+            // `Task { @MainActor in }` below) isn't guaranteed to land back
+            // on the main thread — dispatch explicitly rather than mutate
+            // `state` (@Published) from a possibly-background thread.
+            DispatchQueue.main.async {
+                self?.state = .readingOmronHistory("\(deviceName): \(message)")
+            }
+        }
+        state = .readingOmronHistory("\(deviceName): Connecting…")
         Task { @MainActor in
             do {
                 let readings = try await handler.readBloodPressureRecords(on: peripheral, parentService: service)
@@ -118,6 +137,8 @@ final class BLEManager: NSObject, ObservableObject {
                 }
                 if readings.isEmpty {
                     self.state = .failed("Connected, but no stored readings were found on this Omron cuff.")
+                } else {
+                    self.state = .connected(deviceName)
                 }
             } catch {
                 self.state = .failed(error.localizedDescription)

@@ -60,6 +60,13 @@ final class OmronBLEHandler: NSObject {
     private var unlockContinuation: CheckedContinuation<Data, Error>?
     private var rxPacketContinuation: CheckedContinuation<RxPacket, Error>?
 
+    /// Fired at each major step with a human-readable status — this
+    /// protocol has no fast built-in confirmation for most of these steps,
+    /// so without this, a stuck connection is silent and indistinguishable
+    /// from a working-but-slow one. BLEManager surfaces this directly in
+    /// the Devices screen's status row.
+    var onProgress: ((String) -> Void)?
+
     /// Runs the full flow: discover characteristics, enable notifications,
     /// unlock (pairing first if needed), read every stored record for both
     /// user slots, end transmission. Throws on any failure rather than
@@ -68,13 +75,18 @@ final class OmronBLEHandler: NSObject {
         self.peripheral = peripheral
         peripheral.delegate = self
 
+        onProgress?("Discovering Omron characteristics…")
         try await discoverCharacteristics(service: parentService)
+        onProgress?("Enabling notifications…")
         try await enableNotifications()
+        onProgress?("Unlocking…")
         try await unlockOrPair()
+        onProgress?("Starting data transfer…")
         try await startTransmission()
 
         var allReadings: [ParsedBloodPressureMeasurement] = []
-        for userStartAddress in OmronProtocol.userStartAddresses {
+        for (userIndex, userStartAddress) in OmronProtocol.userStartAddresses.enumerated() {
+            onProgress?("Reading stored readings (user \(userIndex + 1) of \(OmronProtocol.userStartAddresses.count))…")
             let totalBytes = OmronProtocol.recordsPerUser * OmronProtocol.recordByteSize
             let raw = try await readContinuousEeprom(
                 startAddress: userStartAddress,
@@ -84,6 +96,7 @@ final class OmronBLEHandler: NSObject {
             allReadings.append(contentsOf: parseRecords(raw))
         }
 
+        onProgress?("Finishing…")
         try await endTransmission()
         return allReadings.sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
     }
@@ -136,7 +149,9 @@ final class OmronBLEHandler: NSObject {
             // app's key before. Attempt pairing — if the cuff isn't
             // physically in pairing mode, this fails cleanly with a clear
             // error after ~10s rather than doing anything harmful.
+            onProgress?("Not paired yet — hold the cuff's Bluetooth button until \"-P-\" shows, pairing…")
             try await pair(newKey: OmronProtocol.defaultPairingKey)
+            onProgress?("Paired — unlocking…")
             try await unlock(key: OmronProtocol.defaultPairingKey)
         }
     }
@@ -151,6 +166,7 @@ final class OmronBLEHandler: NSObject {
     private func pair(newKey: [UInt8]) async throws {
         var enteredProgrammingMode = false
         for attempt in 1...10 {
+            onProgress?("Waiting for pairing mode (attempt \(attempt) of 10)…")
             let response = try await writeToUnlockCharacteristic(Data([0x02] + [UInt8](repeating: 0, count: 16)))
             if response.count >= 2, response.prefix(2) == OmronProtocol.ResponseType.enterKeyProgrammingMode {
                 enteredProgrammingMode = true

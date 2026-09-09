@@ -87,6 +87,12 @@ struct DeviceConnectionView: View {
                 ProgressView().controlSize(.small)
                 Text("Connecting to \(name)…")
             }
+        case .readingOmronHistory(let message):
+            HStack(alignment: .top) {
+                ProgressView().controlSize(.small)
+                Text(message)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         case .connected(let name):
             Label("Connected to \(name)", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(NivaraColor.normal)
