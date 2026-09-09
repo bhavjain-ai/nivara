@@ -258,7 +258,7 @@ final class OmronBLEHandler: NSObject {
         command.append(0x00)
         command.append(xorChecksum(command))
 
-        log("TX readBlockEeprom: requested address 0x\(String(format: "%04x", address)), size \(size), command \(command.omronHexString)")
+        log("TX readBlockEeprom: requested address 0x\(String(format: "%04x", address)), size \(size), command \(Data(command).omronHexString)")
         let response = try await sendCommand(command)
         let expectedAddressBytes = Data([UInt8((address >> 8) & 0xff), UInt8(address & 0xff)])
         guard response.eepromAddress == expectedAddressBytes else {
