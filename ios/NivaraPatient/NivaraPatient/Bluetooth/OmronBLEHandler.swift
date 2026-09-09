@@ -236,14 +236,29 @@ final class OmronBLEHandler: NSObject {
 
     // MARK: - EEPROM reads
 
+    /// The `100`-records-per-user span (and everything else in
+    /// OmronProtocol's record-format constants) was borrowed from a
+    /// different, unconfirmed Omron model — real hardware testing found
+    /// this device stops responding to reads entirely partway through
+    /// that assumed span (repeatedly, at the same address, even after a
+    /// long patient wait — not a timing fluke). That's read as "past the
+    /// end of this device's actual readable record region," not a fatal
+    /// error: whatever was already read successfully is kept, and the
+    /// caller moves on (to the next user slot, or to finishing up)
+    /// instead of discarding a good partial read.
     private func readContinuousEeprom(startAddress: Int, totalBytes: Int, blockSize: Int) async throws -> Data {
         var result = Data()
         var address = startAddress
         var remaining = totalBytes
         while remaining > 0 {
             let chunkSize = min(remaining, blockSize)
-            let chunk = try await readBlockEeprom(address: address, size: chunkSize)
-            result += chunk
+            do {
+                let chunk = try await readBlockEeprom(address: address, size: chunkSize)
+                result += chunk
+            } catch OmronError.timeout {
+                log("No response reading 0x\(String(format: "%04x", address)) after repeated retries — treating as end of this device's readable record region, keeping \(result.count) bytes read so far")
+                break
+            }
             address += chunkSize
             remaining -= chunkSize
         }
@@ -296,14 +311,16 @@ final class OmronBLEHandler: NSObject {
     // the original reply was still in flight (see readBlockEeprom's
     // mismatch-retry comment for what that caused).
     //
-    // Real-hardware logs also showed this cuff occasionally going
-    // completely silent (no response on any channel at all) for well
-    // over 20s at a time before recovering — a flat 4s x 5 = 20s budget
-    // gave up right as the device was still catching up. Attempts now
-    // back off (4s, 6s, 8s, 10s, 12s = 40s total) and pause briefly
-    // between retries rather than immediately re-writing into a device
-    // that may already be backed up.
-    private func sendCommand(_ command: [UInt8], baseTimeoutSeconds: Double = 4.0, maxRetries: Int = 5) async throws -> RxPacket {
+    // Real-hardware logs proved a sustained timeout here (after several
+    // backed-off retries) reliably means "past the end of this device's
+    // readable record region" (see readContinuousEeprom), not a slow
+    // response recovering later — genuinely slow replies observed on
+    // real hardware resolved within a single retry. That happens on
+    // every connect (full history is re-read each time), so the retry
+    // budget stays modest (4s, 6s, 8s = 18s total) rather than the 40s
+    // used to first confirm this diagnosis, while still backing off and
+    // pausing between attempts instead of hammering the device.
+    private func sendCommand(_ command: [UInt8], baseTimeoutSeconds: Double = 4.0, maxRetries: Int = 3) async throws -> RxPacket {
         var lastError: Error = OmronError.timeout
         for attempt in 1...maxRetries {
             do {
