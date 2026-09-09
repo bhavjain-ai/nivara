@@ -258,13 +258,16 @@ final class OmronBLEHandler: NSObject {
         command.append(0x00)
         command.append(xorChecksum(command))
 
+        log("TX readBlockEeprom: requested address 0x\(String(format: "%04x", address)), size \(size), command \(command.hexString)")
         let response = try await sendCommand(command)
         let expectedAddressBytes = Data([UInt8((address >> 8) & 0xff), UInt8(address & 0xff)])
         guard response.eepromAddress == expectedAddressBytes else {
-            throw OmronError.unexpectedResponse("address mismatch reading EEPROM")
+            throw OmronError.unexpectedResponse(
+                "expected address \(expectedAddressBytes.hexString), device echoed \(response.eepromAddress.hexString) — packetType \(response.packetType.hexString), data \(response.dataBytes.hexString)"
+            )
         }
         guard response.packetType == OmronProtocol.ResponseType.readData else {
-            throw OmronError.unexpectedResponse("invalid packet type reading EEPROM")
+            throw OmronError.unexpectedResponse("invalid packet type reading EEPROM: \(response.packetType.hexString)")
         }
         return response.dataBytes
     }
@@ -318,6 +321,7 @@ final class OmronBLEHandler: NSObject {
                 throw OmronError.missingCharacteristics
             }
             let chunk = Data(remaining.prefix(channelWidth))
+            log("TX ch\(channelIndex) > \(chunk.hexString)")
             let writeType: CBCharacteristicWriteType = characteristic.properties.contains(.write) ? .withResponse : .withoutResponse
             peripheral.writeValue(chunk, for: characteristic, type: writeType)
             remaining = remaining.dropFirst(channelWidth)
@@ -325,9 +329,22 @@ final class OmronBLEHandler: NSObject {
         }
     }
 
+    // MARK: - Debug logging
+    //
+    // Always on rather than gated behind a flag — this is an experimental,
+    // unverified integration, and the raw wire trace is the single most
+    // useful thing for diagnosing it against real hardware. Filter Xcode's
+    // console for "[Omron]" to isolate this from the rest of the app's log
+    // output.
+
+    private func log(_ message: String) {
+        print("[Omron] \(message)")
+    }
+
     // MARK: - RX reassembly
 
     private func handleRxChannelUpdate(channel: Int, data: Data) {
+        log("RX ch\(channel) < \(data.hexString)")
         rxRawChannelBuffer[channel] = data
         guard let firstChannelData = rxRawChannelBuffer[0], let sizeByte = firstChannelData.first else { return }
 
@@ -372,6 +389,8 @@ final class OmronBLEHandler: NSObject {
             let end = min(6 + expectedNumDataBytes, bytes.count)
             dataBytes = Data(bytes[6..<end])
         }
+
+        log("RX reassembled: full \(combined.hexString) — type \(packetType.hexString), address \(eepromAddress.hexString), data \(dataBytes.hexString)")
 
         guard let pending = rxPacketContinuation else { return }
         rxPacketContinuation = nil
@@ -440,5 +459,11 @@ extension OmronBLEHandler: CBPeripheralDelegate {
         if let rxIndex = OmronProtocol.rxChannels.firstIndex(of: characteristic.uuid) {
             handleRxChannelUpdate(channel: rxIndex, data: data)
         }
+    }
+}
+
+private extension Data {
+    var hexString: String {
+        map { String(format: "%02x", $0) }.joined()
     }
 }
