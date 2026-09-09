@@ -55,6 +55,10 @@ final class BLEManager: NSObject, ObservableObject {
     /// lifetime — see OmronBLEHandler.swift. Keyed by peripheral identifier
     /// so multiple sequential connections don't collide.
     private var omronHandlers: [UUID: OmronBLEHandler] = [:]
+    /// The peripheral a connect() call is currently in flight for, so a
+    /// stale timeout (see connect(to:)) can tell "this connection attempt
+    /// already resolved one way or another" from "still waiting."
+    private var connectingPeripheralID: UUID?
 
     override init() {
         super.init()
@@ -88,7 +92,22 @@ final class BLEManager: NSObject, ObservableObject {
         guard let peripheral = peripherals[device.id] else { return }
         stopScanning()
         state = .connecting(device.name)
+        connectingPeripheralID = device.id
         centralManager.connect(peripheral, options: nil)
+
+        // CoreBluetooth's connect() has no built-in timeout — if the
+        // peripheral never actually accepts the connection (as opposed to
+        // explicitly rejecting it, which would fire didFailToConnect),
+        // neither didConnect nor didFailToConnect fires at all, and the UI
+        // would otherwise sit on "Connecting…" forever with no way to
+        // recover short of relaunching the app.
+        let timeoutDeviceID = device.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+            guard let self, self.connectingPeripheralID == timeoutDeviceID else { return }
+            self.connectingPeripheralID = nil
+            self.centralManager.cancelPeripheralConnection(peripheral)
+            self.state = .failed("Couldn't connect to \(device.name) — it didn't respond in time. Make sure it's powered on, nearby, and not already connected to another app or phone.")
+        }
     }
 
     func disconnect() {
@@ -185,6 +204,7 @@ extension BLEManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        connectingPeripheralID = nil
         peripheral.delegate = self
         peripheral.discoverServices([GATT.glucoseService, GATT.bloodPressureService, OmronProtocol.parentService])
         connectedDeviceName = peripheral.name ?? "Device"
@@ -192,6 +212,7 @@ extension BLEManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        connectingPeripheralID = nil
         state = .failed(error?.localizedDescription ?? "Couldn't connect to \(peripheral.name ?? "device").")
     }
 
