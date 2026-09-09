@@ -258,16 +258,16 @@ final class OmronBLEHandler: NSObject {
         command.append(0x00)
         command.append(xorChecksum(command))
 
-        log("TX readBlockEeprom: requested address 0x\(String(format: "%04x", address)), size \(size), command \(command.hexString)")
+        log("TX readBlockEeprom: requested address 0x\(String(format: "%04x", address)), size \(size), command \(command.omronHexString)")
         let response = try await sendCommand(command)
         let expectedAddressBytes = Data([UInt8((address >> 8) & 0xff), UInt8(address & 0xff)])
         guard response.eepromAddress == expectedAddressBytes else {
             throw OmronError.unexpectedResponse(
-                "expected address \(expectedAddressBytes.hexString), device echoed \(response.eepromAddress.hexString) — packetType \(response.packetType.hexString), data \(response.dataBytes.hexString)"
+                "expected address \(expectedAddressBytes.omronHexString), device echoed \(response.eepromAddress.omronHexString) — packetType \(response.packetType.omronHexString), data \(response.dataBytes.omronHexString)"
             )
         }
         guard response.packetType == OmronProtocol.ResponseType.readData else {
-            throw OmronError.unexpectedResponse("invalid packet type reading EEPROM: \(response.packetType.hexString)")
+            throw OmronError.unexpectedResponse("invalid packet type reading EEPROM: \(response.packetType.omronHexString)")
         }
         return response.dataBytes
     }
@@ -321,7 +321,7 @@ final class OmronBLEHandler: NSObject {
                 throw OmronError.missingCharacteristics
             }
             let chunk = Data(remaining.prefix(channelWidth))
-            log("TX ch\(channelIndex) > \(chunk.hexString)")
+            log("TX ch\(channelIndex) > \(chunk.omronHexString)")
             let writeType: CBCharacteristicWriteType = characteristic.properties.contains(.write) ? .withResponse : .withoutResponse
             peripheral.writeValue(chunk, for: characteristic, type: writeType)
             remaining = remaining.dropFirst(channelWidth)
@@ -344,7 +344,7 @@ final class OmronBLEHandler: NSObject {
     // MARK: - RX reassembly
 
     private func handleRxChannelUpdate(channel: Int, data: Data) {
-        log("RX ch\(channel) < \(data.hexString)")
+        log("RX ch\(channel) < \(data.omronHexString)")
         rxRawChannelBuffer[channel] = data
         guard let firstChannelData = rxRawChannelBuffer[0], let sizeByte = firstChannelData.first else { return }
 
@@ -390,7 +390,7 @@ final class OmronBLEHandler: NSObject {
             dataBytes = Data(bytes[6..<end])
         }
 
-        log("RX reassembled: full \(combined.hexString) — type \(packetType.hexString), address \(eepromAddress.hexString), data \(dataBytes.hexString)")
+        log("RX reassembled: full \(combined.omronHexString) — type \(packetType.omronHexString), address \(eepromAddress.omronHexString), data \(dataBytes.omronHexString)")
 
         guard let pending = rxPacketContinuation else { return }
         rxPacketContinuation = nil
@@ -463,7 +463,7 @@ extension OmronBLEHandler: CBPeripheralDelegate {
 }
 
 private extension Data {
-    var hexString: String {
+    var omronHexString: String {
         map { String(format: "%02x", $0) }.joined()
     }
 }
