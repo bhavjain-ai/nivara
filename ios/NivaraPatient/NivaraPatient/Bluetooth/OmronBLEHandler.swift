@@ -250,7 +250,16 @@ final class OmronBLEHandler: NSObject {
         return result
     }
 
-    private func readBlockEeprom(address: Int, size: Int) async throws -> Data {
+    /// `mismatchRetriesRemaining` guards against a specific race observed
+    /// against real hardware: when a request times out and gets resent
+    /// (see `sendCommand`), the *original* response can still be in
+    /// flight and arrive late — landing on the retried request's
+    /// continuation instead of the one it actually answers, which reads
+    /// back as this block's data suddenly matching a *previous* address.
+    /// That's a stale, recoverable notification, not a genuine protocol
+    /// mismatch — asking again (rather than failing the whole read) lets
+    /// it flush through.
+    private func readBlockEeprom(address: Int, size: Int, mismatchRetriesRemaining: Int = 3) async throws -> Data {
         var command: [UInt8] = [0x08, 0x01, 0x00]
         command.append(UInt8((address >> 8) & 0xff))
         command.append(UInt8(address & 0xff))
@@ -262,9 +271,13 @@ final class OmronBLEHandler: NSObject {
         let response = try await sendCommand(command)
         let expectedAddressBytes = Data([UInt8((address >> 8) & 0xff), UInt8(address & 0xff)])
         guard response.eepromAddress == expectedAddressBytes else {
-            throw OmronError.unexpectedResponse(
-                "expected address \(expectedAddressBytes.omronHexString), device echoed \(response.eepromAddress.omronHexString) — packetType \(response.packetType.omronHexString), data \(response.dataBytes.omronHexString)"
-            )
+            guard mismatchRetriesRemaining > 0 else {
+                throw OmronError.unexpectedResponse(
+                    "persistent address mismatch — expected \(expectedAddressBytes.omronHexString), device echoed \(response.eepromAddress.omronHexString) — packetType \(response.packetType.omronHexString), data \(response.dataBytes.omronHexString)"
+                )
+            }
+            log("Stale response for 0x\(String(format: "%04x", address)) (got address \(response.eepromAddress.omronHexString)) — retrying")
+            return try await readBlockEeprom(address: address, size: size, mismatchRetriesRemaining: mismatchRetriesRemaining - 1)
         }
         guard response.packetType == OmronProtocol.ResponseType.readData else {
             throw OmronError.unexpectedResponse("invalid packet type reading EEPROM: \(response.packetType.omronHexString)")
@@ -278,7 +291,11 @@ final class OmronBLEHandler: NSObject {
 
     // MARK: - Command send / multi-channel TX
 
-    private func sendCommand(_ command: [UInt8], timeoutSeconds: Double = 2.0, maxRetries: Int = 5) async throws -> RxPacket {
+    // 2.0s was too tight against real hardware — this device sometimes
+    // takes longer than that to respond, which triggered a resend while
+    // the original reply was still in flight (see readBlockEeprom's
+    // mismatch-retry comment for what that caused).
+    private func sendCommand(_ command: [UInt8], timeoutSeconds: Double = 4.0, maxRetries: Int = 5) async throws -> RxPacket {
         var lastError: Error = OmronError.timeout
         for attempt in 1...maxRetries {
             do {
