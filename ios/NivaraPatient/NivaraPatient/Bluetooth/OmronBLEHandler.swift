@@ -20,6 +20,7 @@ final class OmronBLEHandler: NSObject {
 
     enum OmronError: LocalizedError {
         case timeout
+        case disconnected
         case unexpectedResponse(String)
         case checksumMismatch
         case notPaired
@@ -29,6 +30,8 @@ final class OmronBLEHandler: NSObject {
             switch self {
             case .timeout:
                 return "The Omron cuff stopped responding."
+            case .disconnected:
+                return "The Bluetooth connection to the cuff was lost before the read finished."
             case .unexpectedResponse(let detail):
                 return "Unexpected response from the Omron cuff (\(detail)). This is an experimental integration — the record format may not match your exact model."
             case .checksumMismatch:
@@ -59,6 +62,15 @@ final class OmronBLEHandler: NSObject {
     private var pendingNotifyStateCount = 0
     private var unlockContinuation: CheckedContinuation<Data, Error>?
     private var rxPacketContinuation: CheckedContinuation<RxPacket, Error>?
+    /// Set by `peripheralDidDisconnect()` — real hardware showed the BLE
+    /// link itself can drop partway through a long EEPROM read (this
+    /// device's full history read is hundreds of round trips), which
+    /// otherwise looks identical to the device just not responding: every
+    /// further write silently goes nowhere and each attempt burns its
+    /// full timeout before finally erroring with a misleading "stopped
+    /// responding" message. Checking this lets in-flight and future
+    /// attempts fail immediately with a clear, accurate error instead.
+    private var isDisconnected = false
 
     /// Fired at each major step with a human-readable status — this
     /// protocol has no fast built-in confirmation for most of these steps,
@@ -88,12 +100,24 @@ final class OmronBLEHandler: NSObject {
         for (userIndex, userStartAddress) in OmronProtocol.userStartAddresses.enumerated() {
             onProgress?("Reading stored readings (user \(userIndex + 1) of \(OmronProtocol.userStartAddresses.count))…")
             let totalBytes = OmronProtocol.recordsPerUser * OmronProtocol.recordByteSize
-            let raw = try await readContinuousEeprom(
-                startAddress: userStartAddress,
-                totalBytes: totalBytes,
-                blockSize: OmronProtocol.transmissionBlockSize
-            )
-            allReadings.append(contentsOf: parseRecords(raw))
+            do {
+                let raw = try await readContinuousEeprom(
+                    startAddress: userStartAddress,
+                    totalBytes: totalBytes,
+                    blockSize: OmronProtocol.transmissionBlockSize
+                )
+                allReadings.append(contentsOf: parseRecords(raw))
+            } catch OmronError.disconnected {
+                // Seen on real hardware: the BLE link itself dropped
+                // partway through a long read (unlike a plain timeout,
+                // which this device reliably uses to mean "no more
+                // data" — see readContinuousEeprom). There's nothing
+                // more to read and no live connection left to send
+                // end-transmission on, but whatever was already parsed
+                // is real data and worth keeping rather than discarding.
+                onProgress?("Connection dropped partway through — keeping \(allReadings.count) reading(s) already read.")
+                return allReadings.sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+            }
         }
 
         onProgress?("Finishing…")
@@ -326,6 +350,12 @@ final class OmronBLEHandler: NSObject {
             do {
                 let timeoutSeconds = baseTimeoutSeconds + Double(attempt - 1) * 2.0
                 return try await sendCommandOnce(command, timeoutSeconds: timeoutSeconds, attempt: attempt)
+            } catch OmronError.disconnected {
+                // The BLE link itself is gone — retrying just re-triggers
+                // the same CoreBluetooth "API MISUSE ... disconnected"
+                // warning and can never succeed.
+                log("Peripheral disconnected — not retrying")
+                throw OmronError.disconnected
             } catch {
                 lastError = error
                 rxRawChannelBuffer = [nil, nil, nil, nil]
@@ -343,6 +373,7 @@ final class OmronBLEHandler: NSObject {
 
     private func sendCommandOnce(_ command: [UInt8], timeoutSeconds: Double, attempt: Int) async throws -> RxPacket {
         guard let peripheral else { throw OmronError.missingCharacteristics }
+        guard !isDisconnected else { throw OmronError.disconnected }
         log("Sending (attempt \(attempt), timeout \(timeoutSeconds)s)")
         try writeChunked(command, on: peripheral)
 
@@ -451,6 +482,29 @@ final class OmronBLEHandler: NSObject {
         guard let pending = rxPacketContinuation else { return }
         rxPacketContinuation = nil
         pending.resume(throwing: error)
+    }
+
+    /// Called by BLEManager's CBCentralManagerDelegate as soon as it's
+    /// told this peripheral disconnected. Fails whatever's currently
+    /// awaited right away, and latches `isDisconnected` so every
+    /// subsequent attempt fails fast too instead of writing into (and
+    /// timing out against) a peripheral that's already gone.
+    func peripheralDidDisconnect() {
+        isDisconnected = true
+        let error = OmronError.disconnected
+        if let pending = discoverCharacteristicsContinuation {
+            discoverCharacteristicsContinuation = nil
+            pending.resume(throwing: error)
+        }
+        if let pending = notifyStateContinuation {
+            notifyStateContinuation = nil
+            pending.resume(throwing: error)
+        }
+        if let pending = unlockContinuation {
+            unlockContinuation = nil
+            pending.resume(throwing: error)
+        }
+        failPendingRxPacket(.disconnected)
     }
 
     // MARK: - Record parsing

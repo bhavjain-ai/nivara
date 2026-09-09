@@ -218,6 +218,16 @@ extension BLEManager: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         connectedDeviceName = nil
+        // Real hardware showed the BLE link itself can drop partway
+        // through a long Omron history read — if a handler is still
+        // working on this peripheral, let it fail whatever it's
+        // awaiting right away (see OmronBLEHandler.peripheralDidDisconnect)
+        // and finish through its own success/failure path, rather than
+        // stomping its in-progress `.readingOmronHistory` state here.
+        if let handler = omronHandlers[peripheral.identifier] {
+            handler.peripheralDidDisconnect()
+            return
+        }
         state = .idle
     }
 }
