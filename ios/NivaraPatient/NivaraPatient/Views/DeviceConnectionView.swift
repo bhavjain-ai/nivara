@@ -35,7 +35,7 @@ struct DeviceConnectionView: View {
                 } header: {
                     Text("Nearby Devices")
                 } footer: {
-                    Text("Works with any BLE device that supports the standard Bluetooth Glucose Profile or Blood Pressure Profile — including Accu-Chek Instant meters and most BLE home BP cuffs. No manufacturer app required.")
+                    Text("Works with any BLE device that supports the standard Bluetooth Glucose Profile or Blood Pressure Profile — including Accu-Chek Instant meters and most BLE home BP cuffs. No manufacturer app required. Omron BP cuffs are also supported experimentally via a reverse-engineered protocol — the record format is a best guess for some models and may not decode correctly.")
                 }
 
                 Section {
@@ -124,7 +124,7 @@ struct DeviceConnectionView: View {
     private func iconName(for kind: BLEManager.DiscoveredDevice.Kind) -> String {
         switch kind {
         case .glucose: return "drop.fill"
-        case .bloodPressure: return "heart.fill"
+        case .bloodPressure, .omronBloodPressure: return "heart.fill"
         case .unknown: return "questionmark.circle"
         }
     }
@@ -133,6 +133,7 @@ struct DeviceConnectionView: View {
         switch kind {
         case .glucose: return "Glucose meter"
         case .bloodPressure: return "Blood pressure cuff"
+        case .omronBloodPressure: return "Blood pressure cuff (Omron, experimental)"
         case .unknown: return "Unknown device type"
         }
     }

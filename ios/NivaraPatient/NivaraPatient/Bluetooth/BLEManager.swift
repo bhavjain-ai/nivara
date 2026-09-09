@@ -23,7 +23,7 @@ final class BLEManager: NSObject, ObservableObject {
     }
 
     struct DiscoveredDevice: Identifiable, Equatable {
-        enum Kind { case glucose, bloodPressure, unknown }
+        enum Kind { case glucose, bloodPressure, omronBloodPressure, unknown }
         let id: UUID
         let name: String
         let rssi: Int
@@ -44,6 +44,10 @@ final class BLEManager: NSObject, ObservableObject {
     /// Most recent Glucose Measurement Context result per peripheral, consumed
     /// by the very next Glucose Measurement notification from that peripheral.
     private var pendingMealContext: [UUID: GlucoseSampleType] = [:]
+    /// Retains the Omron protocol handler for a peripheral's connection
+    /// lifetime — see OmronBLEHandler.swift. Keyed by peripheral identifier
+    /// so multiple sequential connections don't collide.
+    private var omronHandlers: [UUID: OmronBLEHandler] = [:]
 
     override init() {
         super.init()
@@ -54,8 +58,16 @@ final class BLEManager: NSObject, ObservableObject {
         guard centralManager.state == .poweredOn else { return }
         discoveredDevices.removeAll()
         state = .scanning
+        // Omron's parent service is included defensively — omblepy (the
+        // reference implementation this app's Omron support is ported from)
+        // scans unfiltered and only confirms the service post-connection,
+        // which suggests Omron cuffs may not actually advertise it. If so,
+        // an Omron cuff simply won't appear in discoveredDevices below;
+        // that's a known possible gap, not a crash risk (this UUID is
+        // otherwise inert in the filter — standard-profile discovery is
+        // unaffected either way).
         centralManager.scanForPeripherals(
-            withServices: [GATT.glucoseService, GATT.bloodPressureService],
+            withServices: [GATT.glucoseService, GATT.bloodPressureService, OmronProtocol.parentService],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
     }
@@ -88,6 +100,31 @@ final class BLEManager: NSObject, ObservableObject {
         let command: [UInt8] = [0x01, 0x06]
         peripheral.writeValue(Data(command), for: characteristic, type: .withResponse)
     }
+
+    /// Omron cuffs don't implement the standard GATT services above at all
+    /// — see OmronBLEHandler.swift. Hands `peripheral.delegate` off to a
+    /// dedicated handler instance (retained in `omronHandlers` for the
+    /// duration of the read) rather than threading this multi-step,
+    /// proprietary handshake through this class's own, much simpler
+    /// standard-GATT delegate methods.
+    private func handleOmronConnection(peripheral: CBPeripheral, service: CBService) {
+        let handler = OmronBLEHandler()
+        omronHandlers[peripheral.identifier] = handler
+        Task { @MainActor in
+            do {
+                let readings = try await handler.readBloodPressureRecords(on: peripheral, parentService: service)
+                for reading in readings {
+                    self.onBPReading?(reading)
+                }
+                if readings.isEmpty {
+                    self.state = .failed("Connected, but no stored readings were found on this Omron cuff.")
+                }
+            } catch {
+                self.state = .failed(error.localizedDescription)
+            }
+            self.omronHandlers[peripheral.identifier] = nil
+        }
+    }
 }
 
 // MARK: - CBCentralManagerDelegate
@@ -112,6 +149,8 @@ extension BLEManager: CBCentralManagerDelegate {
             kind = .glucose
         } else if advertisedServices.contains(GATT.bloodPressureService) {
             kind = .bloodPressure
+        } else if advertisedServices.contains(OmronProtocol.parentService) {
+            kind = .omronBloodPressure
         } else {
             kind = .unknown
         }
@@ -126,7 +165,7 @@ extension BLEManager: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         peripheral.delegate = self
-        peripheral.discoverServices([GATT.glucoseService, GATT.bloodPressureService])
+        peripheral.discoverServices([GATT.glucoseService, GATT.bloodPressureService, OmronProtocol.parentService])
         connectedDeviceName = peripheral.name ?? "Device"
         state = .connected(peripheral.name ?? "Device")
     }
@@ -146,6 +185,12 @@ extension BLEManager: CBCentralManagerDelegate {
 extension BLEManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
+
+        if let omronService = services.first(where: { $0.uuid == OmronProtocol.parentService }) {
+            handleOmronConnection(peripheral: peripheral, service: omronService)
+            return
+        }
+
         for service in services {
             if service.uuid == GATT.glucoseService {
                 peripheral.discoverCharacteristics(
