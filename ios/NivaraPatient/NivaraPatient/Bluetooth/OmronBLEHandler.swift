@@ -295,23 +295,38 @@ final class OmronBLEHandler: NSObject {
     // takes longer than that to respond, which triggered a resend while
     // the original reply was still in flight (see readBlockEeprom's
     // mismatch-retry comment for what that caused).
-    private func sendCommand(_ command: [UInt8], timeoutSeconds: Double = 4.0, maxRetries: Int = 5) async throws -> RxPacket {
+    //
+    // Real-hardware logs also showed this cuff occasionally going
+    // completely silent (no response on any channel at all) for well
+    // over 20s at a time before recovering — a flat 4s x 5 = 20s budget
+    // gave up right as the device was still catching up. Attempts now
+    // back off (4s, 6s, 8s, 10s, 12s = 40s total) and pause briefly
+    // between retries rather than immediately re-writing into a device
+    // that may already be backed up.
+    private func sendCommand(_ command: [UInt8], baseTimeoutSeconds: Double = 4.0, maxRetries: Int = 5) async throws -> RxPacket {
         var lastError: Error = OmronError.timeout
         for attempt in 1...maxRetries {
             do {
-                return try await sendCommandOnce(command, timeoutSeconds: timeoutSeconds)
+                let timeoutSeconds = baseTimeoutSeconds + Double(attempt - 1) * 2.0
+                return try await sendCommandOnce(command, timeoutSeconds: timeoutSeconds, attempt: attempt)
             } catch {
                 lastError = error
                 rxRawChannelBuffer = [nil, nil, nil, nil]
                 rxPacketContinuation = nil
-                if attempt == maxRetries { throw lastError }
+                if attempt == maxRetries {
+                    log("Giving up after \(maxRetries) attempts, no usable response — \(error.localizedDescription)")
+                    throw lastError
+                }
+                log("Attempt \(attempt) of \(maxRetries) failed (\(error.localizedDescription)) — pausing before retry")
+                try? await Task.sleep(nanoseconds: 500_000_000)
             }
         }
         throw lastError
     }
 
-    private func sendCommandOnce(_ command: [UInt8], timeoutSeconds: Double) async throws -> RxPacket {
+    private func sendCommandOnce(_ command: [UInt8], timeoutSeconds: Double, attempt: Int) async throws -> RxPacket {
         guard let peripheral else { throw OmronError.missingCharacteristics }
+        log("Sending (attempt \(attempt), timeout \(timeoutSeconds)s)")
         try writeChunked(command, on: peripheral)
 
         return try await withCheckedThrowingContinuation { continuation in
