@@ -155,7 +155,7 @@ final class BLEManager: NSObject, ObservableObject {
                     self.onBPReading?(reading)
                 }
                 if readings.isEmpty {
-                    self.state = .failed("Connected, but no stored readings were found on this Omron cuff.")
+                    self.state = .failed("Connected, but couldn't find a reading from the last few minutes. Take a new measurement on the cuff, then connect again.")
                 } else {
                     self.state = .connected(deviceName)
                 }

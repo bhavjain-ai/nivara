@@ -79,10 +79,41 @@ final class OmronBLEHandler: NSObject {
     /// the Devices screen's status row.
     var onProgress: ((String) -> Void)?
 
+    /// Only the single latest reading matters to this app — Omron stores
+    /// records in a per-user ring buffer, so physical EEPROM position
+    /// doesn't reliably indicate recency (real hardware showed one user
+    /// slot already full/wrapped, meaning "first" or "last address" could
+    /// be any age at all). Each record carries its own timestamp, so the
+    /// true latest is just whichever parsed reading has the max
+    /// timestamp — but a read that gets cut short by a BLE disconnect
+    /// (see below) could easily miss the slot that actually holds it,
+    /// which would make a genuinely stale reading look "most recent" by
+    /// process of elimination. Gating on freshness catches that: the
+    /// realistic flow is "patient takes a reading, then opens the app,"
+    /// so the true latest reading should be at most a few minutes old.
+    /// If the best candidate we found isn't recent, we don't know
+    /// whether it's genuinely the latest or just the latest we managed
+    /// to reach before something cut the read short — either way, it's
+    /// safer to report nothing new than to show a health reading of
+    /// uncertain age as current.
+    private static let freshnessWindow: TimeInterval = 5 * 60
+
+    private func freshestReading(_ readings: [ParsedBloodPressureMeasurement]) -> [ParsedBloodPressureMeasurement] {
+        guard let mostRecent = readings.max(by: { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }),
+              let timestamp = mostRecent.timestamp,
+              abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
+        else {
+            return []
+        }
+        return [mostRecent]
+    }
+
     /// Runs the full flow: discover characteristics, enable notifications,
-    /// unlock (pairing first if needed), read every stored record for both
-    /// user slots, end transmission. Throws on any failure rather than
-    /// returning partial/fabricated data.
+    /// unlock (pairing first if needed), read stored records for both user
+    /// slots, end transmission. Throws on any failure other than a mid-read
+    /// disconnect, which is treated as "read what we could" — see
+    /// freshestReading for why only a reading from within the last few
+    /// minutes is ever actually returned.
     func readBloodPressureRecords(on peripheral: CBPeripheral, parentService: CBService) async throws -> [ParsedBloodPressureMeasurement] {
         self.peripheral = peripheral
         peripheral.delegate = self
@@ -113,16 +144,18 @@ final class OmronBLEHandler: NSObject {
                 // which this device reliably uses to mean "no more
                 // data" — see readContinuousEeprom). There's nothing
                 // more to read and no live connection left to send
-                // end-transmission on, but whatever was already parsed
-                // is real data and worth keeping rather than discarding.
-                onProgress?("Connection dropped partway through — keeping \(allReadings.count) reading(s) already read.")
-                return allReadings.sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+                // end-transmission on.
+                let fresh = freshestReading(allReadings)
+                onProgress?(fresh.isEmpty
+                    ? "Connection dropped partway through — couldn't confirm a recent reading."
+                    : "Connection dropped partway through — found a recent reading.")
+                return fresh
             }
         }
 
         onProgress?("Finishing…")
         try await endTransmission()
-        return allReadings.sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+        return freshestReading(allReadings)
     }
 
     // MARK: - Characteristic discovery
