@@ -135,9 +135,19 @@ final class OmronBLEHandler: NSObject {
                 let raw = try await readContinuousEeprom(
                     startAddress: userStartAddress,
                     totalBytes: totalBytes,
-                    blockSize: OmronProtocol.transmissionBlockSize
+                    blockSize: OmronProtocol.transmissionBlockSize,
+                    stopIfFound: { chunk in
+                        guard let reading = self.parseRecords(chunk).first, let timestamp = reading.timestamp else { return false }
+                        return abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
+                    }
                 )
                 allReadings.append(contentsOf: parseRecords(raw))
+                if !freshestReading(allReadings).isEmpty {
+                    // Already found what we came for — no need to keep
+                    // scanning this user's remaining ring buffer or check
+                    // the other user slot at all.
+                    break
+                }
             } catch OmronError.disconnected {
                 // Seen on real hardware: the BLE link itself dropped
                 // partway through a long read (unlike a plain timeout,
@@ -303,7 +313,18 @@ final class OmronBLEHandler: NSObject {
     /// error: whatever was already read successfully is kept, and the
     /// caller moves on (to the next user slot, or to finishing up)
     /// instead of discarding a good partial read.
-    private func readContinuousEeprom(startAddress: Int, totalBytes: Int, blockSize: Int) async throws -> Data {
+    /// `stopIfFound` is checked after every block — this app only ever
+    /// wants a reading from the last few minutes (see freshestReading),
+    /// and a full per-user scan is hundreds of round trips that can take
+    /// several minutes end to end on this device. Real hardware testing
+    /// showed a read that was otherwise working fine got abandoned by
+    /// the person testing it because it "looked stuck" grinding through
+    /// mostly-empty ring buffer slots. Stopping the instant a
+    /// good-enough reading is found (rather than always reading every
+    /// remaining block regardless) turns the common case — a reading
+    /// taken moments before connecting — into a handful of round trips
+    /// instead of the full scan.
+    private func readContinuousEeprom(startAddress: Int, totalBytes: Int, blockSize: Int, stopIfFound: (Data) -> Bool) async throws -> Data {
         var result = Data()
         var address = startAddress
         var remaining = totalBytes
@@ -312,6 +333,10 @@ final class OmronBLEHandler: NSObject {
             do {
                 let chunk = try await readBlockEeprom(address: address, size: chunkSize)
                 result += chunk
+                if stopIfFound(chunk) {
+                    log("Found a reading from the last few minutes at 0x\(String(format: "%04x", address)) — stopping early instead of reading the rest of this device's ring buffer")
+                    return result
+                }
             } catch OmronError.timeout {
                 log("No response reading 0x\(String(format: "%04x", address)) after repeated retries — treating as end of this device's readable record region, keeping \(result.count) bytes read so far")
                 break
