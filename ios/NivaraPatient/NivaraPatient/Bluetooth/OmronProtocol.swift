@@ -77,14 +77,39 @@ enum OmronProtocol {
         static let unlockAccepted = Data([0x81, 0x00])
     }
 
-    // MARK: - Record format reference: HEM-7342T / Omron BP7450 ("10 Series")
+    // MARK: - Record format: reverse-engineered against real BP786N/HEM-7321T-Z hardware
     //
-    // EXPERIMENTAL / best-guess for this app's actual target (BP786N /
-    // HEM-7321T-Z) — see the type-level doc comment above.
+    // The HEM-7342T/BP7450-derived layout this section originally held was
+    // wrong for this device — every record decoded to an impossible date
+    // (month 0) no matter which bit offsets or endianness were tried, which
+    // turned out to be because the record size itself was wrong, not just
+    // the field offsets within it.
+    //
+    // Confirmed directly against a real reading (93/67 mmHg, pulse 62,
+    // taken ~14:35 device-local time): a 4-byte marker ("0420103f") repeats
+    // with an exact 14-byte period across 64 samples in a real console log
+    // — this device's records are 14 bytes, not 16. Re-slicing the
+    // continuous EEPROM dump on that boundary (after an assumed 8-byte
+    // per-user header — the phase offset the marker period implies) landed
+    // pulse/diastolic/systolic/minute/hour on that reading's exact real
+    // values across 5 independent fields — see OmronRecordParser.swift for
+    // the exact bit/byte offsets. `transmissionBlockSize` is unrelated and
+    // unaffected: it's the wire-protocol EEPROM-read chunk size, confirmed
+    // correct since every 16-byte read has succeeded against this device.
+    //
+    // userRecordsHeaderSize (8 bytes) was only directly confirmed for user
+    // 1's region (0x0098) — applying the same value to user 2 (0x06D8) is
+    // an assumption, not independently verified.
+    //
+    // day/month/year remain unconfirmed (no unique bit-offset fit the way
+    // minute/hour did from this single data point) — OmronRecordParser
+    // deliberately doesn't use the device's own date fields for that
+    // reason; see its doc comment.
 
     static let deviceEndianessIsLittle = true
     static let userStartAddresses: [Int] = [0x0098, 0x06D8]
+    static let userRecordsHeaderSize = 8
     static let recordsPerUser = 100
-    static let recordByteSize = 0x10 // 16 bytes
+    static let recordByteSize = 0x0E // 14 bytes
     static let transmissionBlockSize = 0x10 // 16 bytes — how large a single EEPROM read request can be
 }

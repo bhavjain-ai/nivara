@@ -4,48 +4,56 @@ import Foundation
 /// EEPROM into the same `ParsedBloodPressureMeasurement` the rest of the app
 /// already consumes from the standard-profile path.
 ///
-/// EXPERIMENTAL — see OmronProtocol.swift's doc comment for the full
-/// rationale. Field offsets below are ported from omblepy's `hem-7342t.py`
-/// (Omron BP7450), the closest documented sibling to this app's actual
-/// target device (Omron BP786N / HEM-7321T-Z), not a confirmed match for it.
+/// Field offsets below are reverse-engineered directly against real BP786N /
+/// HEM-7321T-Z hardware (see OmronProtocol.swift's record-format doc
+/// comment for how) — this is no longer a guess borrowed from another
+/// model. Confirmed against one real reading (93/67 mmHg, pulse 62, taken
+/// ~14:35 device-local time): pulse, diastolic, systolic, minute, and hour
+/// all decoded to that reading's exact values.
 enum OmronRecordParser {
     static func parse(_ recordBytes: [UInt8]) -> ParsedBloodPressureMeasurement? {
         guard recordBytes.count == OmronProtocol.recordByteSize else { return nil }
 
-        let minute = Int(bitsToInt(recordBytes, 68, 73))
-        let second = min(Int(bitsToInt(recordBytes, 74, 79)), 59) // device can report up to 63
-        let month = Int(bitsToInt(recordBytes, 82, 85))
-        let day = Int(bitsToInt(recordBytes, 86, 90))
-        let hour = Int(bitsToInt(recordBytes, 91, 95))
-        let year = Int(bitsToInt(recordBytes, 98, 103)) + 2000
-        let pulse = Int(bitsToInt(recordBytes, 104, 111))
-        let diastolic = Int(bitsToInt(recordBytes, 112, 119))
-        let systolic = Int(bitsToInt(recordBytes, 120, 127)) + 25
-
-        guard month >= 1, month <= 12, day >= 1, day <= 31, hour <= 23, minute <= 59 else {
-            // Guards against treating an empty/garbage EEPROM slot (or a
-            // record format that doesn't actually match this device) as a
-            // real reading — fail this one record rather than show a
-            // fabricated date.
-            return nil
-        }
-
-        var components = DateComponents()
-        components.year = year
-        components.month = month
-        components.day = day
-        components.hour = hour
-        components.minute = minute
-        components.second = second
-        let timestamp = Calendar(identifier: .gregorian).date(from: components)
+        // Byte-aligned — confirmed exact matches, no scaling/offset needed
+        // (the previous layout's "systolic + 25" was specific to the wrong
+        // record format and doesn't apply here).
+        let pulse = Int(recordBytes[4])
+        let diastolic = Int(recordBytes[5])
+        let systolic = Int(recordBytes[13])
 
         guard systolic > diastolic, systolic < 300, diastolic > 0 else {
-            // Same defensive intent as above, applied to the vital values
-            // themselves — a genuinely wrong record-format guess is far
-            // more likely to produce an impossible reading than a
-            // plausible-but-wrong one, but this is not a guarantee.
+            // Guards against treating an empty/garbage EEPROM slot as a
+            // real reading — fail this one record rather than show a
+            // fabricated value.
             return nil
         }
+
+        // Bit-packed — confirmed exact matches against the same reading.
+        let minute = Int(bitsToInt(recordBytes, 87, 92))
+        let hour = Int(bitsToInt(recordBytes, 93, 97))
+        guard hour <= 23, minute <= 59 else { return nil }
+
+        // day/month/year were NOT independently confirmed — see
+        // OmronProtocol.swift's doc comment: several candidate bit offsets
+        // all looked equally plausible from one data point, unlike
+        // minute/hour which each had exactly one bit offset that produced
+        // the real value. Rather than guess and risk silently mislabeling
+        // an old reading with a fabricated recent-looking date, every
+        // record is timestamped using the *phone's* current date combined
+        // with the device's (confirmed) hour:minute. This is correct for
+        // the one thing this app actually uses the timestamp for — "is
+        // this reading from the last few minutes" (see
+        // OmronBLEHandler.freshestReading) — as long as the cuff's clock
+        // is on the same day as the phone, which holds for the read-right-
+        // after-taking-a-measurement flow this app relies on. It is NOT a
+        // real historical date for older stored records; an old record
+        // would only be mistaken for a fresh one if its hour:minute
+        // happens to land within the freshness window purely by chance.
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = hour
+        components.minute = minute
+        components.second = 0
+        let timestamp = Calendar(identifier: .gregorian).date(from: components)
 
         return ParsedBloodPressureMeasurement(
             systolic: systolic,

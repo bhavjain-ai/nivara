@@ -136,12 +136,20 @@ final class OmronBLEHandler: NSObject {
                     startAddress: userStartAddress,
                     totalBytes: totalBytes,
                     blockSize: OmronProtocol.transmissionBlockSize,
-                    stopIfFound: { chunk in
-                        guard let reading = self.parseRecords(chunk).first, let timestamp = reading.timestamp else { return false }
-                        return abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
+                    // Checked against the accumulated buffer so far (not
+                    // just the newest chunk): real records are 14 bytes
+                    // but reads come back in fixed 16-byte chunks, so a
+                    // record can straddle two chunks — only the aligned,
+                    // accumulated buffer can be sliced into records
+                    // correctly (see parseUserRecords).
+                    stopIfFound: { accumulated in
+                        self.parseUserRecords(accumulated).contains { reading in
+                            guard let timestamp = reading.timestamp else { return false }
+                            return abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
+                        }
                     }
                 )
-                allReadings.append(contentsOf: parseRecords(raw))
+                allReadings.append(contentsOf: parseUserRecords(raw))
                 if !freshestReading(allReadings).isEmpty {
                     // Already found what we came for — no need to keep
                     // scanning this user's remaining ring buffer or check
@@ -333,7 +341,7 @@ final class OmronBLEHandler: NSObject {
             do {
                 let chunk = try await readBlockEeprom(address: address, size: chunkSize)
                 result += chunk
-                if stopIfFound(chunk) {
+                if stopIfFound(result) {
                     log("Found a reading from the last few minutes at 0x\(String(format: "%04x", address)) — stopping early instead of reading the rest of this device's ring buffer")
                     return result
                 }
@@ -566,6 +574,15 @@ final class OmronBLEHandler: NSObject {
     }
 
     // MARK: - Record parsing
+
+    /// Drops the per-user header before slicing into records — a raw
+    /// per-user EEPROM dump isn't record-aligned from byte 0. See
+    /// `OmronProtocol.userRecordsHeaderSize`'s doc comment for how this
+    /// offset was derived from real hardware.
+    private func parseUserRecords(_ userRaw: Data) -> [ParsedBloodPressureMeasurement] {
+        guard userRaw.count > OmronProtocol.userRecordsHeaderSize else { return [] }
+        return parseRecords(userRaw.dropFirst(OmronProtocol.userRecordsHeaderSize))
+    }
 
     private func parseRecords(_ raw: Data) -> [ParsedBloodPressureMeasurement] {
         let recordSize = OmronProtocol.recordByteSize
