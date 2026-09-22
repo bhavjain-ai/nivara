@@ -88,10 +88,11 @@ final class OmronBLEHandler: NSObject {
     ///
     /// There is no single fixed "latest reading" address, though — real
     /// testing showed the values live in a small ring buffer that keeps
-    /// advancing as new readings are taken, and the official app tracks
-    /// its own persisted read cursor into it that we have no access to.
-    /// `scanForLatestValuesRecord` is the best-effort recovery of "the
-    /// newest record we can see" without that cursor.
+    /// advancing as new readings are taken. Like the official app, we keep
+    /// our own persisted read cursor (`UserDefaults`, per peripheral —
+    /// see `valuesRingCursorKey`) pointing at the last record we found, so
+    /// each connection only has to scan forward from there instead of
+    /// re-walking the ring from a fixed, increasingly-stale starting guess.
     ///
     /// Even with a confirmed-correct read, still gate on freshness: if the
     /// cuff hasn't had a new reading taken recently, this slot just holds
@@ -121,13 +122,27 @@ final class OmronBLEHandler: NSObject {
             address: OmronProtocol.latestReadingMetadataAddress,
             size: OmronProtocol.latestReadingMetadataSize
         )
-        let latestValuesRecord = try await scanForLatestValuesRecord()
+        let cursorKey = Self.valuesRingCursorKey(for: peripheral)
+        let scanStartAddress = UserDefaults.standard.object(forKey: cursorKey) as? Int ?? OmronProtocol.valuesRingScanStartAddress
+        let found = try await scanForLatestValuesRecord(startingAt: scanStartAddress)
+        if let found {
+            // Remember exactly where we found it — not one record past it —
+            // so the next connection re-examines this same slot before
+            // continuing. That costs nothing (it's read as part of the same
+            // chunk as whatever comes after it) and guarantees we never
+            // skip past a record on an off-by-one, at the cost of one
+            // harmless re-decode of an already-imported reading (VitalsStore
+            // already dedupes on exact date+systolic+diastolic, so taking a
+            // second reading within the freshness window and syncing twice
+            // imports only the new one, not a repeat of the first).
+            UserDefaults.standard.set(found.address, forKey: cursorKey)
+        }
 
         onProgress?("Finishing…")
         try await endTransmission()
 
-        guard let latestValuesRecord,
-              let reading = OmronRecordParser.parseLatestReading(metadata: [UInt8](metadata), latestValuesRecord: latestValuesRecord),
+        guard let found,
+              let reading = OmronRecordParser.parseLatestReading(metadata: [UInt8](metadata), latestValuesRecord: found.record),
               let timestamp = reading.timestamp,
               abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
         else {
@@ -137,17 +152,24 @@ final class OmronBLEHandler: NSObject {
         return [reading]
     }
 
-    /// Scans forward from `valuesRingScanStartAddress` in
-    /// `valuesRingScanChunkRecords`-record chunks, keeping the last
-    /// plausible (non-blank, sane-looking) record it finds. Stops early on
-    /// a blank (all-0xFF) chunk or a read timeout — both mean we've
+    /// Persisted per-peripheral (not global) in case the patient ever pairs
+    /// more than one Omron cuff — each has its own independent ring.
+    private static func valuesRingCursorKey(for peripheral: CBPeripheral) -> String {
+        "omron.valuesRingCursor.\(peripheral.identifier.uuidString)"
+    }
+
+    /// Scans forward from `startAddress` in `valuesRingScanChunkRecords`-
+    /// record chunks, keeping the last plausible (non-blank, sane-looking)
+    /// record it finds along with the address it was read from. Stops early
+    /// on a blank (all-0xFF) chunk or a read timeout — both mean we've
     /// scanned past the ring's written tail — and is otherwise capped at
     /// `valuesRingScanMaxChunks` chunks so a device whose ring never shows
-    /// a blank tail (already wrapped) still returns in a bounded number of
-    /// round trips instead of scanning indefinitely.
-    private func scanForLatestValuesRecord() async throws -> [UInt8]? {
-        var latest: [UInt8]?
-        var address = OmronProtocol.valuesRingScanStartAddress
+    /// a blank tail (already wrapped), or a stale/invalid persisted cursor,
+    /// still returns in a bounded number of round trips instead of scanning
+    /// indefinitely.
+    private func scanForLatestValuesRecord(startingAt startAddress: Int) async throws -> (record: [UInt8], address: Int)? {
+        var latest: (record: [UInt8], address: Int)?
+        var address = startAddress
         let chunkSize = OmronProtocol.valuesRingScanChunkRecords * OmronProtocol.valuesRingRecordSize
 
         for _ in 0..<OmronProtocol.valuesRingScanMaxChunks {
@@ -166,7 +188,7 @@ final class OmronBLEHandler: NSObject {
                     sawBlank = true
                     break
                 }
-                latest = record
+                latest = (record: record, address: address + offset)
                 offset += OmronProtocol.valuesRingRecordSize
             }
             if sawBlank { break }
