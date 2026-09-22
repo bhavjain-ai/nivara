@@ -79,29 +79,52 @@ enum OmronProtocol {
     // Every earlier version of this section was blind reverse-engineering
     // against a continuous EEPROM ring-buffer dump, and never reliably
     // matched more than a couple of fields at once. This was superseded
-    // entirely once a real HCI capture of the official app talking to this
-    // exact cuff (BP786N/HEM-7321T-Z) was obtained: the official app does
-    // NOT scan a ring buffer for the newest record — it reads two small
-    // fixed EEPROM locations that always hold the *latest* reading.
+    // once real HCI captures (PacketLogger) of the official app talking to
+    // this exact cuff (BP786N/HEM-7321T-Z) were obtained — TWO separate
+    // syncs, each against a different known-ground-truth reading:
+    //   - Sync 1: 111/71 mmHg, pulse 67bpm, 18:48, 9/21
+    //   - Sync 2: 112/73 mmHg, ~19:14, 9/21
     //
-    // Captured request/response pairs, decoded byte-for-byte against a
-    // known-ground-truth reading (111/71 mmHg, pulse 67bpm, 18:48, 9/21):
-    //   - Read 38 bytes @ 0x0260 ("metadata"): month/year/hour/day/minute/
-    //     systolic all live in here (see OmronRecordParser.parseLatestReading
-    //     for exact offsets) — all six matched the known reading exactly.
-    //   - Read 14 bytes @ 0x0c5a ("values"): diastolic and pulse live here —
-    //     both matched exactly.
-    // 8 independently-matching fields across two unrelated reads is well
-    // beyond coincidence, so this replaces the old ring-buffer-scan
-    // approach outright. `transmissionBlockSize` is unrelated and
-    // unaffected: it's the wire-protocol EEPROM-read chunk size, confirmed
-    // correct since every 16-byte read has succeeded against this device
-    // (readBlockEeprom's multi-channel reassembly is generic to any
-    // requested size, including these larger 38/14-byte reads).
+    // Read 38 bytes @ 0x0260 ("metadata") reliably gives month/year/
+    // hour/day/minute (see OmronRecordParser.parseLatestReading for exact
+    // offsets) — matched both syncs exactly, and is stable enough to use
+    // for freshness-gating. Its byte 7 is a "new records since last app
+    // sync" counter — confirmed by a write-back command each sync sends
+    // that zeroes it — but that counter (and the address the official app
+    // reads records from) is meaningful only relative to a sync cursor the
+    // official app persists locally, which we have no access to.
+    //
+    // The reading's actual values live in a SEPARATE small ring buffer of
+    // 14-byte records near 0x0c5a, NOT a single fixed slot as first
+    // assumed: sync 1 read exactly one record at 0x0c5a, sync 2 read three
+    // new records starting at 0x0c68 (0x0c5a + one record). Decoding the
+    // last record read in each case against known ground truth gave an
+    // identical, byte-aligned layout both times:
+    //   - record[0] = diastolic (raw, confirmed exact: 71 and 73)
+    //   - record[1] = systolic - 25 (confirmed exact: 86+25=111, 87+25=112)
+    //   - record[3] = pulse (raw, confirmed exact: 67 both times metadata
+    //     didn't independently confirm this, but it round-trips correctly)
+    // 8 independently-matching fields across two unrelated real syncs is
+    // well beyond coincidence.
+    //
+    // Since we have no persisted sync cursor, OmronBLEHandler scans
+    // forward from `valuesRingScanStartAddress` (our one empirically
+    // confirmed-valid anchor) in `valuesRingScanChunkRecords`-record
+    // chunks, keeping the last plausible record it finds — a best-effort
+    // "newest record visible from here," not a protocol-guaranteed
+    // correct read (see OmronBLEHandler.scanForLatestValuesRecord).
+    // `transmissionBlockSize` is unrelated and unaffected: it's the
+    // wire-protocol EEPROM-read chunk size, confirmed correct since every
+    // 16-byte read has succeeded against this device (readBlockEeprom's
+    // multi-channel reassembly is generic to any requested size up to 56
+    // bytes — the max a single request can return: 4 channels x 16 bytes
+    // minus the 8-byte packet header/trailer).
 
     static let latestReadingMetadataAddress = 0x0260
     static let latestReadingMetadataSize = 38
-    static let latestReadingValuesAddress = 0x0c5a
-    static let latestReadingValuesSize = 14
+    static let valuesRingRecordSize = 14
+    static let valuesRingScanStartAddress = 0x0c5a
+    static let valuesRingScanChunkRecords = 4 // 56 bytes/read — the max a single EEPROM read request supports
+    static let valuesRingScanMaxChunks = 10 // bounds the scan to at most 10 round trips
     static let transmissionBlockSize = 0x10 // 16 bytes — how large a single EEPROM read request can be
 }

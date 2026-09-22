@@ -79,15 +79,19 @@ final class OmronBLEHandler: NSObject {
     /// the Devices screen's status row.
     var onProgress: ((String) -> Void)?
 
-    /// Only the single latest reading matters to this app. Unlike the
-    /// ring-buffer history this handler used to scan (removed — see git
-    /// history if that's ever needed again), this reads two small, fixed
-    /// "latest reading" locations directly — confirmed for real against a
-    /// BLE sniffer capture of the *official* OMRON connect app talking to
-    /// this exact cuff, not reverse-engineered blind. Both the address
-    /// layout and the field offsets below are taken straight from that
-    /// capture; see OmronProtocol.swift's doc comment for the six
-    /// independently-matching fields that confirmed it.
+    /// Only the single latest reading matters to this app. Confirmed for
+    /// real against two BLE sniffer captures of the *official* OMRON
+    /// connect app talking to this exact cuff, not reverse-engineered
+    /// blind — see OmronProtocol.swift's doc comment for the full
+    /// derivation (8 independently-matching fields across two unrelated
+    /// real readings).
+    ///
+    /// There is no single fixed "latest reading" address, though — real
+    /// testing showed the values live in a small ring buffer that keeps
+    /// advancing as new readings are taken, and the official app tracks
+    /// its own persisted read cursor into it that we have no access to.
+    /// `scanForLatestValuesRecord` is the best-effort recovery of "the
+    /// newest record we can see" without that cursor.
     ///
     /// Even with a confirmed-correct read, still gate on freshness: if the
     /// cuff hasn't had a new reading taken recently, this slot just holds
@@ -97,7 +101,7 @@ final class OmronBLEHandler: NSObject {
     private static let freshnessWindow: TimeInterval = 5 * 60
 
     /// Runs the full flow: discover characteristics, enable notifications,
-    /// unlock (pairing first if needed), read the latest-reading slots, end
+    /// unlock (pairing first if needed), read the latest-reading data, end
     /// transmission.
     func readBloodPressureRecords(on peripheral: CBPeripheral, parentService: CBService) async throws -> [ParsedBloodPressureMeasurement] {
         self.peripheral = peripheral
@@ -117,15 +121,13 @@ final class OmronBLEHandler: NSObject {
             address: OmronProtocol.latestReadingMetadataAddress,
             size: OmronProtocol.latestReadingMetadataSize
         )
-        let values = try await readBlockEeprom(
-            address: OmronProtocol.latestReadingValuesAddress,
-            size: OmronProtocol.latestReadingValuesSize
-        )
+        let latestValuesRecord = try await scanForLatestValuesRecord()
 
         onProgress?("Finishing…")
         try await endTransmission()
 
-        guard let reading = OmronRecordParser.parseLatestReading(metadata: [UInt8](metadata), values: [UInt8](values)),
+        guard let latestValuesRecord,
+              let reading = OmronRecordParser.parseLatestReading(metadata: [UInt8](metadata), latestValuesRecord: latestValuesRecord),
               let timestamp = reading.timestamp,
               abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
         else {
@@ -133,6 +135,44 @@ final class OmronBLEHandler: NSObject {
             return []
         }
         return [reading]
+    }
+
+    /// Scans forward from `valuesRingScanStartAddress` in
+    /// `valuesRingScanChunkRecords`-record chunks, keeping the last
+    /// plausible (non-blank, sane-looking) record it finds. Stops early on
+    /// a blank (all-0xFF) chunk or a read timeout — both mean we've
+    /// scanned past the ring's written tail — and is otherwise capped at
+    /// `valuesRingScanMaxChunks` chunks so a device whose ring never shows
+    /// a blank tail (already wrapped) still returns in a bounded number of
+    /// round trips instead of scanning indefinitely.
+    private func scanForLatestValuesRecord() async throws -> [UInt8]? {
+        var latest: [UInt8]?
+        var address = OmronProtocol.valuesRingScanStartAddress
+        let chunkSize = OmronProtocol.valuesRingScanChunkRecords * OmronProtocol.valuesRingRecordSize
+
+        for _ in 0..<OmronProtocol.valuesRingScanMaxChunks {
+            let chunk: Data
+            do {
+                chunk = try await readBlockEeprom(address: address, size: chunkSize)
+            } catch OmronError.timeout {
+                break
+            }
+            let bytes = [UInt8](chunk)
+            var sawBlank = false
+            var offset = 0
+            while offset + OmronProtocol.valuesRingRecordSize <= bytes.count {
+                let record = Array(bytes[offset..<(offset + OmronProtocol.valuesRingRecordSize)])
+                if record.allSatisfy({ $0 == 0xff }) {
+                    sawBlank = true
+                    break
+                }
+                latest = record
+                offset += OmronProtocol.valuesRingRecordSize
+            }
+            if sawBlank { break }
+            address += chunkSize
+        }
+        return latest
     }
 
     // MARK: - Characteristic discovery
