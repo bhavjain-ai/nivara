@@ -14,15 +14,12 @@ import CoreBluetooth
 ///
 /// omblepy's own documentation states the low-level communication protocol
 /// below (UUIDs, command framing, pairing handshake) is the same across
-/// every Omron BLE device they've tested — only the *record format*
-/// (memory addresses, byte layout of a stored reading) is genuinely
-/// model-specific. The values below use omblepy's `hem-7342t.py` (sold as
-/// the Omron BP7450) as the record-format reference, since it's the closest
-/// documented sibling to this app's target device (Omron BP786N /
-/// HEM-7321T-Z — both are US "10 Series" BP7xx devices), NOT a confirmed
-/// match. If readings come back with plausible-looking but wrong values, or
-/// fail to parse, the record-format section below is the first place to
-/// revisit — see OmronRecordParser.swift.
+/// every Omron BLE device they've tested, and that's held up against real
+/// BP786N/HEM-7321T-Z hardware — confirmed independently by a real BLE
+/// sniffer capture of the official OMRON connect app using this exact
+/// framing. The *record format* (memory addresses, byte layout of the
+/// latest reading) is device-specific and was NOT sourced from omblepy —
+/// see the record-format section below for where it actually came from.
 enum OmronProtocol {
     // MARK: - BLE UUIDs (universal across Omron BLE devices, per omblepy)
 
@@ -77,39 +74,34 @@ enum OmronProtocol {
         static let unlockAccepted = Data([0x81, 0x00])
     }
 
-    // MARK: - Record format: reverse-engineered against real BP786N/HEM-7321T-Z hardware
+    // MARK: - Record format: proven via a real BLE sniffer capture (PacketLogger) of the official OMRON connect app
     //
-    // The HEM-7342T/BP7450-derived layout this section originally held was
-    // wrong for this device — every record decoded to an impossible date
-    // (month 0) no matter which bit offsets or endianness were tried, which
-    // turned out to be because the record size itself was wrong, not just
-    // the field offsets within it.
+    // Every earlier version of this section was blind reverse-engineering
+    // against a continuous EEPROM ring-buffer dump, and never reliably
+    // matched more than a couple of fields at once. This was superseded
+    // entirely once a real HCI capture of the official app talking to this
+    // exact cuff (BP786N/HEM-7321T-Z) was obtained: the official app does
+    // NOT scan a ring buffer for the newest record — it reads two small
+    // fixed EEPROM locations that always hold the *latest* reading.
     //
-    // Confirmed directly against a real reading (93/67 mmHg, pulse 62,
-    // taken ~14:35 device-local time): a 4-byte marker ("0420103f") repeats
-    // with an exact 14-byte period across 64 samples in a real console log
-    // — this device's records are 14 bytes, not 16. Re-slicing the
-    // continuous EEPROM dump on that boundary (after an assumed 8-byte
-    // per-user header — the phase offset the marker period implies) landed
-    // pulse/diastolic/systolic/minute/hour on that reading's exact real
-    // values across 5 independent fields — see OmronRecordParser.swift for
-    // the exact bit/byte offsets. `transmissionBlockSize` is unrelated and
+    // Captured request/response pairs, decoded byte-for-byte against a
+    // known-ground-truth reading (111/71 mmHg, pulse 67bpm, 18:48, 9/21):
+    //   - Read 38 bytes @ 0x0260 ("metadata"): month/year/hour/day/minute/
+    //     systolic all live in here (see OmronRecordParser.parseLatestReading
+    //     for exact offsets) — all six matched the known reading exactly.
+    //   - Read 14 bytes @ 0x0c5a ("values"): diastolic and pulse live here —
+    //     both matched exactly.
+    // 8 independently-matching fields across two unrelated reads is well
+    // beyond coincidence, so this replaces the old ring-buffer-scan
+    // approach outright. `transmissionBlockSize` is unrelated and
     // unaffected: it's the wire-protocol EEPROM-read chunk size, confirmed
-    // correct since every 16-byte read has succeeded against this device.
-    //
-    // userRecordsHeaderSize (8 bytes) was only directly confirmed for user
-    // 1's region (0x0098) — applying the same value to user 2 (0x06D8) is
-    // an assumption, not independently verified.
-    //
-    // day/month/year remain unconfirmed (no unique bit-offset fit the way
-    // minute/hour did from this single data point) — OmronRecordParser
-    // deliberately doesn't use the device's own date fields for that
-    // reason; see its doc comment.
+    // correct since every 16-byte read has succeeded against this device
+    // (readBlockEeprom's multi-channel reassembly is generic to any
+    // requested size, including these larger 38/14-byte reads).
 
-    static let deviceEndianessIsLittle = true
-    static let userStartAddresses: [Int] = [0x0098, 0x06D8]
-    static let userRecordsHeaderSize = 8
-    static let recordsPerUser = 100
-    static let recordByteSize = 0x0E // 14 bytes
+    static let latestReadingMetadataAddress = 0x0260
+    static let latestReadingMetadataSize = 38
+    static let latestReadingValuesAddress = 0x0c5a
+    static let latestReadingValuesSize = 14
     static let transmissionBlockSize = 0x10 // 16 bytes — how large a single EEPROM read request can be
 }

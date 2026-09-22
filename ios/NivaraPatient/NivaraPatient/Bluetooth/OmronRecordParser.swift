@@ -1,58 +1,42 @@
 import Foundation
 
-/// Decodes a single stored blood-pressure record from an Omron cuff's
-/// EEPROM into the same `ParsedBloodPressureMeasurement` the rest of the app
-/// already consumes from the standard-profile path.
+/// Decodes the cuff's "latest reading" EEPROM slots into the same
+/// `ParsedBloodPressureMeasurement` the rest of the app already consumes
+/// from the standard-profile path.
 ///
-/// Field offsets below are reverse-engineered directly against real BP786N /
-/// HEM-7321T-Z hardware (see OmronProtocol.swift's record-format doc
-/// comment for how) — this is no longer a guess borrowed from another
-/// model. Confirmed against one real reading (93/67 mmHg, pulse 62, taken
-/// ~14:35 device-local time): pulse, diastolic, systolic, minute, and hour
-/// all decoded to that reading's exact values.
+/// Field offsets below are not reverse-engineered guesses — they're read
+/// directly off a real HCI/BLE sniffer capture (Apple PacketLogger) of the
+/// official OMRON connect app syncing with this exact cuff (BP786N /
+/// HEM-7321T-Z). All six metadata fields and both value fields decoded to
+/// the exact values of a known real reading (111/71 mmHg, pulse 67bpm,
+/// 18:48, 9/21) — see OmronProtocol.swift's record-format doc comment.
 enum OmronRecordParser {
-    static func parse(_ recordBytes: [UInt8]) -> ParsedBloodPressureMeasurement? {
-        guard recordBytes.count == OmronProtocol.recordByteSize else { return nil }
+    static func parseLatestReading(metadata: [UInt8], values: [UInt8]) -> ParsedBloodPressureMeasurement? {
+        guard metadata.count > 29, values.count > 3 else { return nil }
 
-        // Byte-aligned — confirmed exact matches, no scaling/offset needed
-        // (the previous layout's "systolic + 25" was specific to the wrong
-        // record format and doesn't apply here).
-        let pulse = Int(recordBytes[4])
-        let diastolic = Int(recordBytes[5])
-        let systolic = Int(recordBytes[13])
+        let month = Int(metadata[22])
+        let year = Int(metadata[23]) + 2000
+        let hour = Int(metadata[24])
+        let day = Int(metadata[25])
+        let minute = Int(metadata[27])
+        let systolic = Int(metadata[29])
 
+        let diastolic = Int(values[0])
+        let pulse = Int(values[3])
+
+        guard month >= 1, month <= 12, day >= 1, day <= 31, hour <= 23, minute <= 59 else { return nil }
         guard systolic > diastolic, systolic < 300, diastolic > 0 else {
             // Guards against treating an empty/garbage EEPROM slot as a
-            // real reading — fail this one record rather than show a
-            // fabricated value.
+            // real reading — fail rather than show a fabricated value.
             return nil
         }
 
-        // Bit-packed — confirmed exact matches against the same reading.
-        let minute = Int(bitsToInt(recordBytes, 87, 92))
-        let hour = Int(bitsToInt(recordBytes, 93, 97))
-        guard hour <= 23, minute <= 59 else { return nil }
-
-        // day/month/year were NOT independently confirmed — see
-        // OmronProtocol.swift's doc comment: several candidate bit offsets
-        // all looked equally plausible from one data point, unlike
-        // minute/hour which each had exactly one bit offset that produced
-        // the real value. Rather than guess and risk silently mislabeling
-        // an old reading with a fabricated recent-looking date, every
-        // record is timestamped using the *phone's* current date combined
-        // with the device's (confirmed) hour:minute. This is correct for
-        // the one thing this app actually uses the timestamp for — "is
-        // this reading from the last few minutes" (see
-        // OmronBLEHandler.freshestReading) — as long as the cuff's clock
-        // is on the same day as the phone, which holds for the read-right-
-        // after-taking-a-measurement flow this app relies on. It is NOT a
-        // real historical date for older stored records; an old record
-        // would only be mistaken for a fresh one if its hour:minute
-        // happens to land within the freshness window purely by chance.
-        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
         components.hour = hour
         components.minute = minute
-        components.second = 0
         let timestamp = Calendar(identifier: .gregorian).date(from: components)
 
         return ParsedBloodPressureMeasurement(
@@ -62,24 +46,5 @@ enum OmronRecordParser {
             pulseRate: pulse,
             timestamp: timestamp
         )
-    }
-
-    /// A direct port of omblepy's `_bytearrayBitsToInt`: treats the whole
-    /// byte array as one big integer (endianness per
-    /// `OmronProtocol.deviceEndianessIsLittle`) and extracts the bit range
-    /// `[firstValidBitIdx, lastValidBitIdx]`, where bit 0 is the most
-    /// significant bit of that big integer — NOT necessarily the first byte
-    /// in memory order once endianness is taken into account.
-    private static func bitsToInt(_ bytes: [UInt8], _ firstValidBitIdx: Int, _ lastValidBitIdx: Int) -> UInt64 {
-        let byteCount = bytes.count
-        var result: UInt64 = 0
-        for bitIdx in firstValidBitIdx...lastValidBitIdx {
-            let byteOrderIndex = bitIdx / 8
-            let byteIndex = OmronProtocol.deviceEndianessIsLittle ? (byteCount - 1 - byteOrderIndex) : byteOrderIndex
-            let bitInByte = 7 - (bitIdx % 8) // 7 = most significant bit of the byte
-            let bit = (bytes[byteIndex] >> bitInByte) & 0x01
-            result = (result << 1) | UInt64(bit)
-        }
-        return result
     }
 }

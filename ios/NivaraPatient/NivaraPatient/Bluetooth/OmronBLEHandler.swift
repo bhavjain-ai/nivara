@@ -79,41 +79,26 @@ final class OmronBLEHandler: NSObject {
     /// the Devices screen's status row.
     var onProgress: ((String) -> Void)?
 
-    /// Only the single latest reading matters to this app — Omron stores
-    /// records in a per-user ring buffer, so physical EEPROM position
-    /// doesn't reliably indicate recency (real hardware showed one user
-    /// slot already full/wrapped, meaning "first" or "last address" could
-    /// be any age at all). Each record carries its own timestamp, so the
-    /// true latest is just whichever parsed reading has the max
-    /// timestamp — but a read that gets cut short by a BLE disconnect
-    /// (see below) could easily miss the slot that actually holds it,
-    /// which would make a genuinely stale reading look "most recent" by
-    /// process of elimination. Gating on freshness catches that: the
-    /// realistic flow is "patient takes a reading, then opens the app,"
-    /// so the true latest reading should be at most a few minutes old.
-    /// If the best candidate we found isn't recent, we don't know
-    /// whether it's genuinely the latest or just the latest we managed
-    /// to reach before something cut the read short — either way, it's
-    /// safer to report nothing new than to show a health reading of
-    /// uncertain age as current.
+    /// Only the single latest reading matters to this app. Unlike the
+    /// ring-buffer history this handler used to scan (removed — see git
+    /// history if that's ever needed again), this reads two small, fixed
+    /// "latest reading" locations directly — confirmed for real against a
+    /// BLE sniffer capture of the *official* OMRON connect app talking to
+    /// this exact cuff, not reverse-engineered blind. Both the address
+    /// layout and the field offsets below are taken straight from that
+    /// capture; see OmronProtocol.swift's doc comment for the six
+    /// independently-matching fields that confirmed it.
+    ///
+    /// Even with a confirmed-correct read, still gate on freshness: if the
+    /// cuff hasn't had a new reading taken recently, this slot just holds
+    /// whatever the last one was — showing that as if it were the result
+    /// of "the measurement you just took" would be actively misleading in
+    /// a health app.
     private static let freshnessWindow: TimeInterval = 5 * 60
 
-    private func freshestReading(_ readings: [ParsedBloodPressureMeasurement]) -> [ParsedBloodPressureMeasurement] {
-        guard let mostRecent = readings.max(by: { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }),
-              let timestamp = mostRecent.timestamp,
-              abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
-        else {
-            return []
-        }
-        return [mostRecent]
-    }
-
     /// Runs the full flow: discover characteristics, enable notifications,
-    /// unlock (pairing first if needed), read stored records for both user
-    /// slots, end transmission. Throws on any failure other than a mid-read
-    /// disconnect, which is treated as "read what we could" — see
-    /// freshestReading for why only a reading from within the last few
-    /// minutes is ever actually returned.
+    /// unlock (pairing first if needed), read the latest-reading slots, end
+    /// transmission.
     func readBloodPressureRecords(on peripheral: CBPeripheral, parentService: CBService) async throws -> [ParsedBloodPressureMeasurement] {
         self.peripheral = peripheral
         peripheral.delegate = self
@@ -127,53 +112,27 @@ final class OmronBLEHandler: NSObject {
         onProgress?("Starting data transfer…")
         try await startTransmission()
 
-        var allReadings: [ParsedBloodPressureMeasurement] = []
-        for (userIndex, userStartAddress) in OmronProtocol.userStartAddresses.enumerated() {
-            onProgress?("Reading stored readings (user \(userIndex + 1) of \(OmronProtocol.userStartAddresses.count))…")
-            let totalBytes = OmronProtocol.recordsPerUser * OmronProtocol.recordByteSize
-            do {
-                let raw = try await readContinuousEeprom(
-                    startAddress: userStartAddress,
-                    totalBytes: totalBytes,
-                    blockSize: OmronProtocol.transmissionBlockSize,
-                    // Checked against the accumulated buffer so far (not
-                    // just the newest chunk): real records are 14 bytes
-                    // but reads come back in fixed 16-byte chunks, so a
-                    // record can straddle two chunks — only the aligned,
-                    // accumulated buffer can be sliced into records
-                    // correctly (see parseUserRecords).
-                    stopIfFound: { accumulated in
-                        self.parseUserRecords(accumulated).contains { reading in
-                            guard let timestamp = reading.timestamp else { return false }
-                            return abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
-                        }
-                    }
-                )
-                allReadings.append(contentsOf: parseUserRecords(raw))
-                if !freshestReading(allReadings).isEmpty {
-                    // Already found what we came for — no need to keep
-                    // scanning this user's remaining ring buffer or check
-                    // the other user slot at all.
-                    break
-                }
-            } catch OmronError.disconnected {
-                // Seen on real hardware: the BLE link itself dropped
-                // partway through a long read (unlike a plain timeout,
-                // which this device reliably uses to mean "no more
-                // data" — see readContinuousEeprom). There's nothing
-                // more to read and no live connection left to send
-                // end-transmission on.
-                let fresh = freshestReading(allReadings)
-                onProgress?(fresh.isEmpty
-                    ? "Connection dropped partway through — couldn't confirm a recent reading."
-                    : "Connection dropped partway through — found a recent reading.")
-                return fresh
-            }
-        }
+        onProgress?("Reading latest reading…")
+        let metadata = try await readBlockEeprom(
+            address: OmronProtocol.latestReadingMetadataAddress,
+            size: OmronProtocol.latestReadingMetadataSize
+        )
+        let values = try await readBlockEeprom(
+            address: OmronProtocol.latestReadingValuesAddress,
+            size: OmronProtocol.latestReadingValuesSize
+        )
 
         onProgress?("Finishing…")
         try await endTransmission()
-        return freshestReading(allReadings)
+
+        guard let reading = OmronRecordParser.parseLatestReading(metadata: [UInt8](metadata), values: [UInt8](values)),
+              let timestamp = reading.timestamp,
+              abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
+        else {
+            onProgress?("Couldn't confirm a reading from the last few minutes.")
+            return []
+        }
+        return [reading]
     }
 
     // MARK: - Characteristic discovery
@@ -311,50 +270,6 @@ final class OmronBLEHandler: NSObject {
 
     // MARK: - EEPROM reads
 
-    /// The `100`-records-per-user span (and everything else in
-    /// OmronProtocol's record-format constants) was borrowed from a
-    /// different, unconfirmed Omron model — real hardware testing found
-    /// this device stops responding to reads entirely partway through
-    /// that assumed span (repeatedly, at the same address, even after a
-    /// long patient wait — not a timing fluke). That's read as "past the
-    /// end of this device's actual readable record region," not a fatal
-    /// error: whatever was already read successfully is kept, and the
-    /// caller moves on (to the next user slot, or to finishing up)
-    /// instead of discarding a good partial read.
-    /// `stopIfFound` is checked after every block — this app only ever
-    /// wants a reading from the last few minutes (see freshestReading),
-    /// and a full per-user scan is hundreds of round trips that can take
-    /// several minutes end to end on this device. Real hardware testing
-    /// showed a read that was otherwise working fine got abandoned by
-    /// the person testing it because it "looked stuck" grinding through
-    /// mostly-empty ring buffer slots. Stopping the instant a
-    /// good-enough reading is found (rather than always reading every
-    /// remaining block regardless) turns the common case — a reading
-    /// taken moments before connecting — into a handful of round trips
-    /// instead of the full scan.
-    private func readContinuousEeprom(startAddress: Int, totalBytes: Int, blockSize: Int, stopIfFound: (Data) -> Bool) async throws -> Data {
-        var result = Data()
-        var address = startAddress
-        var remaining = totalBytes
-        while remaining > 0 {
-            let chunkSize = min(remaining, blockSize)
-            do {
-                let chunk = try await readBlockEeprom(address: address, size: chunkSize)
-                result += chunk
-                if stopIfFound(result) {
-                    log("Found a reading from the last few minutes at 0x\(String(format: "%04x", address)) — stopping early instead of reading the rest of this device's ring buffer")
-                    return result
-                }
-            } catch OmronError.timeout {
-                log("No response reading 0x\(String(format: "%04x", address)) after repeated retries — treating as end of this device's readable record region, keeping \(result.count) bytes read so far")
-                break
-            }
-            address += chunkSize
-            remaining -= chunkSize
-        }
-        return result
-    }
-
     /// `mismatchRetriesRemaining` guards against a specific race observed
     /// against real hardware: when a request times out and gets resent
     /// (see `sendCommand`), the *original* response can still be in
@@ -399,17 +314,11 @@ final class OmronBLEHandler: NSObject {
     // 2.0s was too tight against real hardware — this device sometimes
     // takes longer than that to respond, which triggered a resend while
     // the original reply was still in flight (see readBlockEeprom's
-    // mismatch-retry comment for what that caused).
-    //
-    // Real-hardware logs proved a sustained timeout here (after several
-    // backed-off retries) reliably means "past the end of this device's
-    // readable record region" (see readContinuousEeprom), not a slow
-    // response recovering later — genuinely slow replies observed on
-    // real hardware resolved within a single retry. That happens on
-    // every connect (full history is re-read each time), so the retry
-    // budget stays modest (4s, 6s, 8s = 18s total) rather than the 40s
-    // used to first confirm this diagnosis, while still backing off and
-    // pausing between attempts instead of hammering the device.
+    // mismatch-retry comment for what that caused). Retry budget stays
+    // modest (4s, 6s, 8s = 18s total) since a real connect now only ever
+    // needs a handful of round trips (two fixed-address EEPROM reads,
+    // not a ring-buffer scan), while still backing off and pausing
+    // between attempts instead of hammering the device.
     private func sendCommand(_ command: [UInt8], baseTimeoutSeconds: Double = 4.0, maxRetries: Int = 3) async throws -> RxPacket {
         var lastError: Error = OmronError.timeout
         for attempt in 1...maxRetries {
@@ -573,31 +482,6 @@ final class OmronBLEHandler: NSObject {
         failPendingRxPacket(.disconnected)
     }
 
-    // MARK: - Record parsing
-
-    /// Drops the per-user header before slicing into records — a raw
-    /// per-user EEPROM dump isn't record-aligned from byte 0. See
-    /// `OmronProtocol.userRecordsHeaderSize`'s doc comment for how this
-    /// offset was derived from real hardware.
-    private func parseUserRecords(_ userRaw: Data) -> [ParsedBloodPressureMeasurement] {
-        guard userRaw.count > OmronProtocol.userRecordsHeaderSize else { return [] }
-        return parseRecords(userRaw.dropFirst(OmronProtocol.userRecordsHeaderSize))
-    }
-
-    private func parseRecords(_ raw: Data) -> [ParsedBloodPressureMeasurement] {
-        let recordSize = OmronProtocol.recordByteSize
-        var results: [ParsedBloodPressureMeasurement] = []
-        var offset = raw.startIndex
-        while offset + recordSize <= raw.endIndex {
-            let recordBytes = [UInt8](raw[offset..<(offset + recordSize)])
-            offset += recordSize
-            if recordBytes.allSatisfy({ $0 == 0xff }) { continue } // empty ring-buffer slot
-            if let reading = OmronRecordParser.parse(recordBytes) {
-                results.append(reading)
-            }
-        }
-        return results
-    }
 }
 
 // MARK: - CBPeripheralDelegate
