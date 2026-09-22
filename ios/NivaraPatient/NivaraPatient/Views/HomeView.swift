@@ -15,6 +15,18 @@ struct HomeView: View {
         return profile.name.components(separatedBy: " ").first ?? profile.name
     }
 
+    /// Which device(s) to suggest connecting, based on the patient's
+    /// actual condition(s) rather than assuming every patient tracks
+    /// glucose.
+    private var takeMeasurementSubtitle: String {
+        switch (profile.conditions.contains(.hypertension), profile.conditions.contains(.diabetes)) {
+        case (true, true): return "Connect your BP cuff or glucose meter to check in."
+        case (true, false): return "Connect your BP cuff to check in."
+        case (false, true): return "Connect your glucose meter to check in."
+        case (false, false): return "Connect a device to check in."
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -33,7 +45,7 @@ struct HomeView: View {
                         reassuranceCard(reassurance)
                     }
 
-                    if let lapseDays = viewModel.daysSinceLastGlucoseReading, lapseDays > 2 {
+                    if let lapseDays = viewModel.daysSinceLastRelevantReading, lapseDays > 2 {
                         lapseNudgeCard(days: lapseDays)
                     }
 
@@ -70,9 +82,10 @@ struct HomeView: View {
         .transition(.opacity)
     }
 
-    /// Shown when it's been more than 2 days since the last glucose reading —
-    /// a stronger, more specific signal than the daily "take a measurement"
-    /// prompt below, for a gap long enough it might warrant a check-in.
+    /// Shown when it's been more than 2 days since the last reading relevant
+    /// to the patient's condition(s) — a stronger, more specific signal than
+    /// the daily "take a measurement" prompt below, for a gap long enough it
+    /// might warrant a check-in.
     private func lapseNudgeCard(days: Int) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "bell.badge.fill")
@@ -81,7 +94,7 @@ struct HomeView: View {
                 Text("Haven't seen a reading in \(days) days")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NivaraColor.textPrimary)
-                Text("Everything OK? Connect your meter when you get a chance.")
+                Text("Everything OK? Connect your device when you get a chance.")
                     .font(.caption)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -150,7 +163,7 @@ struct HomeView: View {
                         Text("You haven't taken a measurement yet today")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(NivaraColor.textPrimary)
-                        Text("Connect your glucose meter to check in.")
+                        Text(takeMeasurementSubtitle)
                             .font(.caption)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }

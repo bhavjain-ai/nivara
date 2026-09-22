@@ -14,6 +14,9 @@ struct BPHistoryListView: View {
                     Text("\(reading.systolic)/\(reading.diastolic) mmHg")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
+                    if let pulse = reading.pulse {
+                        PillLabel(text: "\(pulse) bpm")
+                    }
                 }
                 .listRowBackground(NivaraColor.surface)
             }
