@@ -126,19 +126,42 @@ final class PatientViewModel: ObservableObject {
         return bpToday || glucoseToday
     }
 
-    /// Days since the most recent glucose reading — drives Home's lapse
-    /// nudge, a stronger signal than the daily "take a measurement" prompt
-    /// for a gap that's gone on long enough it might need a check-in.
+    /// Days since the most recent glucose reading.
     var daysSinceLastGlucoseReading: Int? {
         guard let latest = vitals.latestGlucose else { return nil }
         return Calendar.current.dateComponents([.day], from: latest.date, to: Date()).day
     }
 
-    /// Glucose readings logged in the trailing 7 days — used for Home's
-    /// consistency framing, which tends to land better with patients than
-    /// another raw mg/dL number.
+    /// Days since the most recent BP reading.
+    var daysSinceLastBPReading: Int? {
+        guard let latest = vitals.latestBP else { return nil }
+        return Calendar.current.dateComponents([.day], from: latest.date, to: Date()).day
+    }
+
+    /// Days since the most recent reading relevant to whichever condition(s)
+    /// the patient's profile lists — drives Home's lapse nudge. A patient
+    /// tracking both takes the more urgent (smaller) of the two gaps, so a
+    /// lapse in either vital surfaces rather than being masked by recent
+    /// activity in the other.
+    var daysSinceLastRelevantReading: Int? {
+        var candidates: [Int] = []
+        if profile.conditions.contains(.hypertension), let days = daysSinceLastBPReading { candidates.append(days) }
+        if profile.conditions.contains(.diabetes), let days = daysSinceLastGlucoseReading { candidates.append(days) }
+        return candidates.min()
+    }
+
+    /// Readings logged in the trailing 7 days, across whichever vitals the
+    /// patient's conditions call for — used for Home's consistency framing,
+    /// which tends to land better with patients than another raw number.
     var readingsThisWeek: Int {
         guard let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return 0 }
-        return vitals.glucoseReadings.filter { $0.date >= weekAgo }.count
+        var count = 0
+        if profile.conditions.contains(.hypertension) {
+            count += vitals.bpReadings.filter { $0.date >= weekAgo }.count
+        }
+        if profile.conditions.contains(.diabetes) {
+            count += vitals.glucoseReadings.filter { $0.date >= weekAgo }.count
+        }
+        return count
     }
 }

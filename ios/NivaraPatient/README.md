@@ -23,10 +23,13 @@ Measurement characteristic (`0x2A18`), and get every reading the meter takes.
 This app adds the analogous standard **Blood Pressure Profile** (`0x1810`) so
 BLE-enabled home BP cuffs work the same way.
 
-Devices that only support Bluetooth Classic (not BLE), or that use a fully
-proprietary BLE protocol instead of these two standard profiles, won't be
-discovered by this app — that's a limitation of the device, not something a
-generic app can work around.
+Devices that only support Bluetooth Classic (not BLE) won't be discovered by
+this app at all — that's a hardware limitation, not something a generic app
+can work around. Devices with a fully proprietary BLE protocol instead of
+these two standard profiles normally wouldn't be either — **with one
+experimental exception: Omron BP cuffs** (see "Omron support" below), where
+the proprietary protocol has been separately reverse-engineered and ported
+in, rather than relying on a standard profile Omron doesn't implement.
 
 ## Requirements
 
@@ -208,6 +211,42 @@ defaults to fasting. If a meter doesn't send context records at all (many
 don't), every reading will show as fasting — retag the latest one from the
 Blood Glucose section of My Health if that's wrong. This mirrors how most
 consumer diabetes apps handle it.
+
+## Omron support (experimental)
+
+Omron BP cuffs don't implement the standard Bluetooth Blood Pressure Profile
+at all — they use a proprietary protocol Omron has never published. This app
+talks to them anyway, via a Swift port of the open-source, reverse-engineered
+[omblepy](https://github.com/userx14/omblepy) project. `Bluetooth/OmronProtocol.swift`'s
+doc comment has the full rationale; short version:
+
+- The low-level communication (BLE UUIDs, command framing, the pairing/unlock
+  handshake) is, per omblepy's own documentation, the same across every Omron
+  BLE device tested. That part of this port should work for any Omron cuff.
+- The **record format** (which bits in a stored reading mean what, and where
+  in EEPROM they live) is genuinely different per model, and Omron doesn't
+  document any of it. This port uses omblepy's `hem-7342t.py` (sold as the
+  Omron BP7450) as the reference — the closest documented sibling to the
+  device this was built against (Omron BP786N / HEM-7321T-Z, both US "10
+  Series" BP7xx devices), **not a confirmed match**. If readings come back
+  garbled, missing, or the connection fails partway through, start with
+  `Bluetooth/OmronRecordParser.swift` and the constants at the bottom of
+  `OmronProtocol.swift`.
+- First connection to a given cuff may require pairing (hold the cuff's
+  Bluetooth button until "-P-" blinks on its display) — `OmronBLEHandler`
+  attempts a normal unlock first and automatically falls back to the pairing
+  handshake if that fails, so this should be automatic rather than a separate
+  step in the app's UI.
+- A successful read pulls the cuff's **entire stored history**, every time
+  you connect (there's no "unread records only" mode implemented) —
+  `VitalsStore.addBPReading` dedupes by exact timestamp + values so
+  reconnecting doesn't pile up duplicates.
+- Reflected in the UI: Omron cuffs show up in the device list labeled
+  "Blood pressure cuff (Omron, experimental)."
+
+If you don't have an Omron cuff on the closest documented model
+(`HEM-7342T`/BP7450) or its exact sibling, treat this as a starting point to
+debug against real hardware, not a guarantee.
 
 ## What's not wired up yet
 

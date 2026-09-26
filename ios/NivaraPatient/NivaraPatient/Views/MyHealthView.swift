@@ -1,11 +1,12 @@
 import SwiftUI
 import Charts
 
-/// Focused on the initial (Type 2 diabetes) patient population: HbA1c and
-/// blood glucose only. Blood pressure and medications have their own homes
-/// (BP would live here too once the hypertension population launches;
-/// medications are their own tab so patients aren't hunting for them at the
-/// bottom of a long page).
+/// Covers both supported patient populations — hypertension (blood
+/// pressure) and Type 2 diabetes (HbA1c, blood glucose). Each section only
+/// appears for a patient whose `conditions` include it, so a
+/// hypertension-only or diabetes-only patient doesn't see an empty section
+/// for a condition they don't have. Medications are their own tab so
+/// patients aren't hunting for them at the bottom of a long page.
 struct MyHealthView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
 
@@ -60,6 +61,25 @@ struct MyHealthView: View {
         return profile.medicationHistory.filter { $0.relatedCondition == .diabetes && $0.date >= earliest }
     }
 
+    /// Same idea as `hba1cTrend`, tracked on systolic since that's the
+    /// number IGH-V staging and the patient's target are both keyed on.
+    private var bpTrend: (text: String, color: Color)? {
+        let readings = viewModel.vitals.bpReadings
+        guard readings.count > 1 else { return nil }
+        let delta = readings[readings.count - 1].systolic - readings[readings.count - 2].systolic
+        if abs(delta) < 2 { return ("Unchanged since your last reading", NivaraColor.textSecondary) }
+        let arrow = delta < 0 ? "↓" : "↑"
+        let text = "\(arrow) \(abs(delta)) mmHg since your last reading"
+        return (text, delta < 0 ? NivaraColor.forestGreen : NivaraColor.warning)
+    }
+
+    /// Hypertension medication changes inside the currently plotted BP date
+    /// range — same rationale as `visibleMedicationChanges`.
+    private var visibleBPMedicationChanges: [MedicationChange] {
+        guard let earliest = viewModel.vitals.bpReadings.first?.date else { return [] }
+        return profile.medicationHistory.filter { $0.relatedCondition == .hypertension && $0.date >= earliest }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -77,14 +97,160 @@ struct MyHealthView: View {
                     }
                     .padding(.top, 8)
 
-                    hba1cSection
-                    glucoseSection
+                    if profile.conditions.contains(.hypertension) {
+                        bpSection
+                    }
+                    if profile.conditions.contains(.diabetes) {
+                        hba1cSection
+                        glucoseSection
+                    }
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(NivaraColor.cream)
             .navigationBarHidden(true)
+        }
+    }
+
+    // MARK: - Blood Pressure
+
+    private var bpSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader("Blood Pressure", icon: "heart.fill")
+
+            if let latest = viewModel.vitals.latestBP {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(latest.systolic)/\(latest.diastolic)")
+                            .font(.system(size: 44, weight: .bold, design: .rounded))
+                            .foregroundStyle(NivaraColor.textPrimary)
+                        Text("mmHg")
+                            .font(.subheadline)
+                            .foregroundStyle(NivaraColor.textSecondary)
+                        if let pulse = latest.pulse {
+                            PillLabel(text: "\(pulse) bpm")
+                        }
+                    }
+                    Text(NivaraDate.relative(latest.date))
+                        .font(.caption)
+                        .foregroundStyle(NivaraColor.textSecondary)
+                    if let target = profile.bpTarget {
+                        Text("Your target: \(target.label)")
+                            .font(.caption2)
+                            .foregroundStyle(NivaraColor.textSecondary)
+                    }
+                    if let status = viewModel.latestBPStatus {
+                        Text(status.message)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(status.level.color)
+                    }
+                    if let trend = bpTrend {
+                        Text(trend.text)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(trend.color)
+                    }
+                }
+
+                if viewModel.vitals.bpReadings.count > 1 {
+                    bpChart
+                    bpLegend
+                }
+
+                recentBPReadings
+            } else {
+                noReadingYet
+            }
+        }
+        .nivaraCard()
+    }
+
+    private var bpChart: some View {
+        Chart {
+            ForEach(viewModel.vitals.bpReadings) { reading in
+                LineMark(x: .value("Date", reading.date), y: .value("mmHg", reading.systolic))
+                    .foregroundStyle(NivaraColor.forestGreen)
+                PointMark(x: .value("Date", reading.date), y: .value("mmHg", reading.systolic))
+                    .foregroundStyle(NivaraColor.forestGreen)
+                LineMark(x: .value("Date", reading.date), y: .value("mmHg", reading.diastolic))
+                    .foregroundStyle(NivaraColor.forestGreen.opacity(0.4))
+                PointMark(x: .value("Date", reading.date), y: .value("mmHg", reading.diastolic))
+                    .foregroundStyle(NivaraColor.forestGreen.opacity(0.4))
+            }
+
+            if let target = profile.bpTarget {
+                RuleMark(y: .value("Systolic target", target.systolic))
+                    .foregroundStyle(NivaraColor.warning.opacity(0.6))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            }
+
+            ForEach(visibleBPMedicationChanges) { change in
+                RuleMark(x: .value("Date", change.date))
+                    .foregroundStyle(NivaraColor.textSecondary.opacity(0.35))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                    .annotation(position: .top) {
+                        Image(systemName: "pill.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(NivaraColor.textSecondary)
+                    }
+            }
+        }
+        .frame(height: 140)
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 3)) { _ in
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.day().month())
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private var bpLegend: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 16) {
+                legendDot(color: NivaraColor.forestGreen, label: "Systolic")
+                legendDot(color: NivaraColor.forestGreen.opacity(0.4), label: "Diastolic")
+                Spacer()
+            }
+            if !visibleBPMedicationChanges.isEmpty {
+                Label("Dashed line marks a medication change", systemImage: "pill.fill")
+                    .font(.caption2)
+                    .foregroundStyle(NivaraColor.textSecondary)
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    private var recentBPReadings: some View {
+        let recent = Array(viewModel.vitals.bpReadings.suffix(5).reversed())
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("RECENT READINGS")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(NivaraColor.textSecondary)
+                .padding(.top, 6)
+
+            ForEach(recent) { reading in
+                HStack {
+                    Text(NivaraDate.shortWithTime.string(from: reading.date))
+                        .font(.caption)
+                        .foregroundStyle(NivaraColor.textSecondary)
+                    Spacer()
+                    Text("\(reading.systolic)/\(reading.diastolic) mmHg")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NivaraColor.textPrimary)
+                }
+                Divider()
+            }
+
+            if viewModel.vitals.bpReadings.count > 5 {
+                NavigationLink {
+                    BPHistoryListView()
+                } label: {
+                    Text("See More")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NivaraColor.forestGreen)
+                }
+            }
         }
     }
 

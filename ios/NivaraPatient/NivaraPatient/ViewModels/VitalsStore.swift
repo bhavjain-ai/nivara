@@ -28,6 +28,13 @@ final class VitalsStore: ObservableObject {
     var latestHbA1c: HbA1cReading? { hba1cReadings.last }
 
     func addBPReading(systolic: Int, diastolic: Int, pulse: Int?, date: Date = Date(), source: ReadingSource = .bleDevice) {
+        // The standard-profile BLE path only ever offers one fresh/last-
+        // stored reading per connect, so duplicates were never a practical
+        // concern before. The Omron path (OmronBLEHandler) re-reads a
+        // cuff's *entire* stored history on every connect, so without this
+        // guard, reconnecting would re-append the same historical readings
+        // every time.
+        guard !bpReadings.contains(where: { $0.date == date && $0.systolic == systolic && $0.diastolic == diastolic }) else { return }
         let reading = BPReading(date: date, systolic: systolic, diastolic: diastolic, pulse: pulse, source: source)
         bpReadings.append(reading)
         bpReadings.sort { $0.date < $1.date }

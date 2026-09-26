@@ -18,12 +18,19 @@ final class BLEManager: NSObject, ObservableObject {
         case idle
         case scanning
         case connecting(String)
+        /// Omron only: BLE-connected, but still working through the
+        /// proprietary handshake/read in the background — see
+        /// OmronBLEHandler. The associated string is a human-readable
+        /// progress step, so a stuck connection is visibly stuck
+        /// *somewhere specific* rather than indistinguishable from one
+        /// that's silently working.
+        case readingOmronHistory(String)
         case connected(String)
         case failed(String)
     }
 
     struct DiscoveredDevice: Identifiable, Equatable {
-        enum Kind { case glucose, bloodPressure, unknown }
+        enum Kind { case glucose, bloodPressure, omronBloodPressure, unknown }
         let id: UUID
         let name: String
         let rssi: Int
@@ -44,6 +51,14 @@ final class BLEManager: NSObject, ObservableObject {
     /// Most recent Glucose Measurement Context result per peripheral, consumed
     /// by the very next Glucose Measurement notification from that peripheral.
     private var pendingMealContext: [UUID: GlucoseSampleType] = [:]
+    /// Retains the Omron protocol handler for a peripheral's connection
+    /// lifetime — see OmronBLEHandler.swift. Keyed by peripheral identifier
+    /// so multiple sequential connections don't collide.
+    private var omronHandlers: [UUID: OmronBLEHandler] = [:]
+    /// The peripheral a connect() call is currently in flight for, so a
+    /// stale timeout (see connect(to:)) can tell "this connection attempt
+    /// already resolved one way or another" from "still waiting."
+    private var connectingPeripheralID: UUID?
 
     override init() {
         super.init()
@@ -54,8 +69,16 @@ final class BLEManager: NSObject, ObservableObject {
         guard centralManager.state == .poweredOn else { return }
         discoveredDevices.removeAll()
         state = .scanning
+        // Omron's parent service is included defensively — omblepy (the
+        // reference implementation this app's Omron support is ported from)
+        // scans unfiltered and only confirms the service post-connection,
+        // which suggests Omron cuffs may not actually advertise it. If so,
+        // an Omron cuff simply won't appear in discoveredDevices below;
+        // that's a known possible gap, not a crash risk (this UUID is
+        // otherwise inert in the filter — standard-profile discovery is
+        // unaffected either way).
         centralManager.scanForPeripherals(
-            withServices: [GATT.glucoseService, GATT.bloodPressureService],
+            withServices: [GATT.glucoseService, GATT.bloodPressureService, OmronProtocol.parentService],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
     }
@@ -69,7 +92,22 @@ final class BLEManager: NSObject, ObservableObject {
         guard let peripheral = peripherals[device.id] else { return }
         stopScanning()
         state = .connecting(device.name)
+        connectingPeripheralID = device.id
         centralManager.connect(peripheral, options: nil)
+
+        // CoreBluetooth's connect() has no built-in timeout — if the
+        // peripheral never actually accepts the connection (as opposed to
+        // explicitly rejecting it, which would fire didFailToConnect),
+        // neither didConnect nor didFailToConnect fires at all, and the UI
+        // would otherwise sit on "Connecting…" forever with no way to
+        // recover short of relaunching the app.
+        let timeoutDeviceID = device.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+            guard let self, self.connectingPeripheralID == timeoutDeviceID else { return }
+            self.connectingPeripheralID = nil
+            self.centralManager.cancelPeripheralConnection(peripheral)
+            self.state = .failed("Couldn't connect to \(device.name) — it didn't respond in time. Make sure it's powered on, nearby, and not already connected to another app or phone.")
+        }
     }
 
     func disconnect() {
@@ -87,6 +125,45 @@ final class BLEManager: NSObject, ObservableObject {
         // for a fresh test taken while connected.
         let command: [UInt8] = [0x01, 0x06]
         peripheral.writeValue(Data(command), for: characteristic, type: .withResponse)
+    }
+
+    /// Omron cuffs don't implement the standard GATT services above at all
+    /// — see OmronBLEHandler.swift. Hands `peripheral.delegate` off to a
+    /// dedicated handler instance (retained in `omronHandlers` for the
+    /// duration of the read) rather than threading this multi-step,
+    /// proprietary handshake through this class's own, much simpler
+    /// standard-GATT delegate methods.
+    private func handleOmronConnection(peripheral: CBPeripheral, service: CBService) {
+        let handler = OmronBLEHandler()
+        omronHandlers[peripheral.identifier] = handler
+        let deviceName = peripheral.name ?? "Omron cuff"
+        handler.onProgress = { [weak self] message in
+            // OmronBLEHandler isn't @MainActor-isolated, so code resuming
+            // after an `await` inside it (unlike BLEManager's own
+            // `Task { @MainActor in }` below) isn't guaranteed to land back
+            // on the main thread — dispatch explicitly rather than mutate
+            // `state` (@Published) from a possibly-background thread.
+            DispatchQueue.main.async {
+                self?.state = .readingOmronHistory("\(deviceName): \(message)")
+            }
+        }
+        state = .readingOmronHistory("\(deviceName): Connecting…")
+        Task { @MainActor in
+            do {
+                let readings = try await handler.readBloodPressureRecords(on: peripheral, parentService: service)
+                for reading in readings {
+                    self.onBPReading?(reading)
+                }
+                if readings.isEmpty {
+                    self.state = .failed("Connected, but couldn't find a reading from the last few minutes. Take a new measurement on the cuff, then connect again.")
+                } else {
+                    self.state = .connected(deviceName)
+                }
+            } catch {
+                self.state = .failed(error.localizedDescription)
+            }
+            self.omronHandlers[peripheral.identifier] = nil
+        }
     }
 }
 
@@ -112,6 +189,8 @@ extension BLEManager: CBCentralManagerDelegate {
             kind = .glucose
         } else if advertisedServices.contains(GATT.bloodPressureService) {
             kind = .bloodPressure
+        } else if advertisedServices.contains(OmronProtocol.parentService) {
+            kind = .omronBloodPressure
         } else {
             kind = .unknown
         }
@@ -125,18 +204,30 @@ extension BLEManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        connectingPeripheralID = nil
         peripheral.delegate = self
-        peripheral.discoverServices([GATT.glucoseService, GATT.bloodPressureService])
+        peripheral.discoverServices([GATT.glucoseService, GATT.bloodPressureService, OmronProtocol.parentService])
         connectedDeviceName = peripheral.name ?? "Device"
         state = .connected(peripheral.name ?? "Device")
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        connectingPeripheralID = nil
         state = .failed(error?.localizedDescription ?? "Couldn't connect to \(peripheral.name ?? "device").")
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         connectedDeviceName = nil
+        // Real hardware showed the BLE link itself can drop partway
+        // through a long Omron history read — if a handler is still
+        // working on this peripheral, let it fail whatever it's
+        // awaiting right away (see OmronBLEHandler.peripheralDidDisconnect)
+        // and finish through its own success/failure path, rather than
+        // stomping its in-progress `.readingOmronHistory` state here.
+        if let handler = omronHandlers[peripheral.identifier] {
+            handler.peripheralDidDisconnect()
+            return
+        }
         state = .idle
     }
 }
@@ -146,6 +237,12 @@ extension BLEManager: CBCentralManagerDelegate {
 extension BLEManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
+
+        if let omronService = services.first(where: { $0.uuid == OmronProtocol.parentService }) {
+            handleOmronConnection(peripheral: peripheral, service: omronService)
+            return
+        }
+
         for service in services {
             if service.uuid == GATT.glucoseService {
                 peripheral.discoverCharacteristics(

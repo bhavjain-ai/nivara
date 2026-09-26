@@ -1,22 +1,17 @@
 import SwiftUI
 
-/// Scoped to the Type 2 diabetes regimen, matching the initial patient
-/// population — current medications in large type, with a "Recent Changes"
-/// history right underneath so patients can see what's different without
-/// hunting for it.
+/// Every current medication in large type, regardless of which condition
+/// it's for — a patient managing both hypertension and diabetes takes them
+/// all together, so hiding half the list by disease silo would be actively
+/// misleading. A "Recent Changes" history sits right underneath so
+/// patients can see what's different without hunting for it.
 struct MedicationsView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
 
     private var profile: PatientProfile { viewModel.profile }
 
-    private var diabetesMedications: [Medication] {
-        profile.medications.filter { $0.isDiabetesMedication }
-    }
-
-    private var diabetesChanges: [MedicationChange] {
-        profile.medicationHistory
-            .filter { $0.relatedCondition == .diabetes }
-            .sorted { $0.date > $1.date }
+    private var recentChanges: [MedicationChange] {
+        profile.medicationHistory.sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -38,17 +33,17 @@ struct MedicationsView: View {
 
     private var currentMedicationsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("YOUR DIABETES MEDICATIONS")
+            Text("YOUR MEDICATIONS")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
 
-            if diabetesMedications.isEmpty {
-                Text("No diabetes medications on file yet.")
+            if profile.medications.isEmpty {
+                Text("No medications on file yet.")
                     .font(.subheadline)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
 
-            ForEach(diabetesMedications) { med in
+            ForEach(profile.medications) { med in
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(med.name)
@@ -78,13 +73,13 @@ struct MedicationsView: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
 
-            if diabetesChanges.isEmpty {
+            if recentChanges.isEmpty {
                 Text("No changes logged yet.")
                     .font(.subheadline)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
 
-            ForEach(diabetesChanges) { change in
+            ForEach(recentChanges) { change in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(NivaraDate.short.string(from: change.date))
                         .font(.caption2)

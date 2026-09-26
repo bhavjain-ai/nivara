@@ -21,13 +21,6 @@ struct Medication: Identifiable, Codable, Equatable {
         self.frequency = frequency
         self.startDate = startDate
     }
-
-    private static let diabetesDrugClasses: Set<String> = [
-        "Biguanide", "SGLT2i", "GLP1", "DPP4i", "Sulfonylurea", "TZD", "Insulin",
-    ]
-
-    /// Used to scope the Medications tab to the Type 2 diabetes regimen.
-    var isDiabetesMedication: Bool { Self.diabetesDrugClasses.contains(drugClass) }
 }
 
 /// A single logged medication change (started, stopped, dose adjusted) shown
