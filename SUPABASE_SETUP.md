@@ -77,15 +77,22 @@ Fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
 
 ## 6. Configure the iOS app
 
+`ios/NivaraPatient/NivaraPatient/Services/SupabaseConfig.swift` already
+exists and is committed — but only with placeholder values, deliberately,
+so a fresh checkout (or Xcode Cloud) has something real to compile against
+without anyone's actual keys in git. Fill in your real `urlString` and
+`anonKey`, then immediately tell git to stop tracking further edits to
+this file so your keys can't get committed by accident:
+
 ```bash
-cp ios/NivaraPatient/NivaraPatient/Services/SupabaseConfig.swift.example \
-   ios/NivaraPatient/NivaraPatient/Services/SupabaseConfig.swift
+# after editing urlString/anonKey in SupabaseConfig.swift:
+git update-index --skip-worktree ios/NivaraPatient/NivaraPatient/Services/SupabaseConfig.swift
 ```
 
-Edit the new `SupabaseConfig.swift` (already gitignored — never commit real
-keys) and fill in `urlString` and `anonKey`. Then regenerate the Xcode
-project so it picks up the new Supabase Swift package dependency added to
-`project.yml`:
+(`git update-index --no-skip-worktree` on the same path undoes this, if
+you ever need to intentionally change the committed placeholder itself.)
+
+If `project.yml` changed since you last opened the project, regenerate:
 
 ```bash
 cd ios/NivaraPatient
