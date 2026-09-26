@@ -1,0 +1,624 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0216B102EE441BEF4D3BCC3D /* OnboardingConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6E90453D408795026D4212 /* OnboardingConsentView.swift */; };
+		05B22759FE4D2F761D1B0F3D /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA2AB969A321FCE589E1A8C /* ChatViewModel.swift */; };
+		05FA5DDD30E540D5BC649710 /* GATTConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAE6DD70E43490964A0A84D /* GATTConstants.swift */; };
+		09B573AD422A9ECF374930E0 /* DemoPatientData.swift in Sources */ = {isa = PBXBuildFile; fileRef = F610F206EE24C8FC23E51E21 /* DemoPatientData.swift */; };
+		1285F112DF3D134D844B9CBE /* MedicationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE8E7E7011297FBEA054434 /* MedicationsView.swift */; };
+		15C6F6D9869ED609692239B3 /* ClinicalGuidelines.swift in Sources */ = {isa = PBXBuildFile; fileRef = D975A477E0AD0A11E373954F /* ClinicalGuidelines.swift */; };
+		1620719B709BF68A1A82E509 /* CareTeamMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86476B515C082781DB7070C1 /* CareTeamMember.swift */; };
+		1C32440BA9F204F45D20F583 /* ContactUsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E692D24448CE1134B9D440D /* ContactUsView.swift */; };
+		1D30FBE6F5ADE7C748F7A895 /* OnboardingCompleteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FB6EE0D8726279DFF29DAD /* OnboardingCompleteView.swift */; };
+		1DC760ED42EC8216F1569F63 /* IEEE11073.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5774DAAA1CDC487966D97131 /* IEEE11073.swift */; };
+		1F00756D94F80E99CE4D35A0 /* OnboardingBasicInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 780259E2BA4536D864C850BD /* OnboardingBasicInfoView.swift */; };
+		2324E3DDDD571CC9DDDF58FE /* GlucoseHistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F470AC167B0DC4D0433F8C3 /* GlucoseHistoryListView.swift */; };
+		2711ACD694A64AF1395FEA5D /* OmronProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BB387EAF7B4D656D5A3194 /* OmronProtocol.swift */; };
+		28769397BDD7EFBEF02B4AC2 /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE531E24952BF67D5E581869 /* DeviceIdentity.swift */; };
+		38472980E57BD1CBBFDACD0B /* CareTeamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB2C487DC501499C408BE71 /* CareTeamView.swift */; };
+		42C6AE3493646159D37D0E76 /* BloodPressureMeasurementParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61361AECED4D891CDD7087B2 /* BloodPressureMeasurementParser.swift */; };
+		42DA8FB77ACAC2A7A3FBA376 /* VitalsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 948E4CF48503A9B4A950E487 /* VitalsStore.swift */; };
+		558B2B1CD2C3E0757B04D03E /* NivaraPatientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA7CD3FCDB1FA0A07C20875 /* NivaraPatientApp.swift */; };
+		5D19E26722FDFA6E2880697A /* PatientModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B69B99C06254A484E52464CE /* PatientModels.swift */; };
+		5E9A1EC5BB794B7497188044 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B23F74DF7D1E40DE35B2E9D6 /* HomeView.swift */; };
+		62471D241C87E6CD9B1FE92B /* PatientViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59C16DF28EB32440A03FED4 /* PatientViewModel.swift */; };
+		629527AE8DD4E968562BE2F0 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D7FC028A4913869094C7B9 /* BLEManager.swift */; };
+		66FE1A6609256D9864E55277 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 70D3897CC57C13EAD5B8923B /* Supabase */; };
+		6868FCB2173D4A8383034C08 /* OnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 481E07885240CC1BC5710402 /* OnboardingStore.swift */; };
+		6A8A563F70852A51D951BCD8 /* DateFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B5D39448BB69ED4727DD9C /* DateFormatting.swift */; };
+		7A1294F8500658F059E8F33A /* OmronRecordParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314F8F187D8DD1D347A46CCD /* OmronRecordParser.swift */; };
+		7B456F9E9DF78CBD24375AC7 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FEBE425026F93A85F59A35 /* StatusBadge.swift */; };
+		7D284182367D9E9D85608FDF /* OmronBLEHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F179B7B66F281E74DC38D1 /* OmronBLEHandler.swift */; };
+		7F67AC309CED4841AEB675F5 /* ConsentDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2959FC9FB11862B2C871CE /* ConsentDocuments.swift */; };
+		89640CAAC4F3EF3DE7161EA2 /* PageTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47262DC52CB4D4C66C5D2632 /* PageTitle.swift */; };
+		8E4C60BBCDE66EC0D5F27443 /* SupabaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3FB99241C3B437D625DDE7 /* SupabaseModels.swift */; };
+		8F119B5B42ED876912999E2F /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0CFC2BC2BA3278B1A928A2D /* OnboardingWelcomeView.swift */; };
+		8F6730FCABAC7A1F930F71B5 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 909EBCDC2439717F5F2490C6 /* SupabaseService.swift */; };
+		918EACF55BECFDFE6F02AA89 /* HbA1cHistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A60F3EE08CAF414A18EC23 /* HbA1cHistoryListView.swift */; };
+		9A136B55B6AD026E35DCFB4E /* GlucoseMeasurementParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1DABB5071C638742E1C683 /* GlucoseMeasurementParser.swift */; };
+		9A1A613DF80E65709C4F4299 /* DeviceConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865CB8057FAD1C135EBD7A36 /* DeviceConnectionView.swift */; };
+		A25FE361AA511F0DA4F47641 /* MealTimingConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986E4DD107F6B7DDEC0ED04D /* MealTimingConfirmationView.swift */; };
+		A4C51AF9B18157063DCAA7AA /* GATTDataHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DA1C5F12E254975D532212 /* GATTDataHelpers.swift */; };
+		A8E1F37D4145A0F6EDCA5C19 /* NivaraTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B1BA619133BF1493C70FD5 /* NivaraTheme.swift */; };
+		AAD88F89B8ACFEF1CDBF32BD /* AppTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD59B6077C92E685F7F6C5B2 /* AppTab.swift */; };
+		ABE150C4E59F392978D15D96 /* CareTeamConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC388BF74FF7DA2E5F951AC1 /* CareTeamConversationView.swift */; };
+		ACBCDC29BC2AB099ABDBBA26 /* SupabaseConfig.swift.example in Resources */ = {isa = PBXBuildFile; fileRef = 17190EE4EBB35EB624AF2FCF /* SupabaseConfig.swift.example */; };
+		AD476D3DB6B97648D2ADF170 /* JSONCoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E8D29A449F34FE39B5D2A28 /* JSONCoding.swift */; };
+		B02944265D632423F53CC8CA /* OnboardingScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3CC1D71ECEEEEE35A3B8DBC /* OnboardingScaffold.swift */; };
+		B9503AE738CFB3EBB363100E /* ConsentDocumentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400EE821BB2366A0509AB59F /* ConsentDocumentSheet.swift */; };
+		BA0AA22FAD238653A0E3CC71 /* BPHistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9855BAD67E64382C2FACC67 /* BPHistoryListView.swift */; };
+		CEE1756A33603C483B4DAB66 /* OnboardingDeviceSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 595C34CC941E1D118EAAFA94 /* OnboardingDeviceSetupView.swift */; };
+		DC005B7C2B8372A71E1B0C5F /* MyHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CED95D70B839E06E608FC51 /* MyHealthView.swift */; };
+		F02E9D680DC7B5947BECEC32 /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924F92C980F1BD21BCFF4DF6 /* OnboardingFlowView.swift */; };
+		F29762D204B28227725A7EC9 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84878E5B85EDF4DAD3C343C2 /* RootView.swift */; };
+		F678128C202C414DF28E4891 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ACAE7451533DC71118E34C /* SupabaseConfig.swift */; };
+		FAD631294D14132B86645A1D /* ToastBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EC5329179FC072CBAF13D3 /* ToastBanner.swift */; };
+		FF30BB6875ADED8959294D43 /* VitalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36470959BDA73C33DD7661C3 /* VitalModels.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		02DA1C5F12E254975D532212 /* GATTDataHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GATTDataHelpers.swift; sourceTree = "<group>"; };
+		03EC5329179FC072CBAF13D3 /* ToastBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastBanner.swift; sourceTree = "<group>"; };
+		04D7FC028A4913869094C7B9 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		17190EE4EBB35EB624AF2FCF /* SupabaseConfig.swift.example */ = {isa = PBXFileReference; path = SupabaseConfig.swift.example; sourceTree = "<group>"; };
+		2BB2C487DC501499C408BE71 /* CareTeamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareTeamView.swift; sourceTree = "<group>"; };
+		314F8F187D8DD1D347A46CCD /* OmronRecordParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmronRecordParser.swift; sourceTree = "<group>"; };
+		36470959BDA73C33DD7661C3 /* VitalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitalModels.swift; sourceTree = "<group>"; };
+		3E692D24448CE1134B9D440D /* ContactUsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactUsView.swift; sourceTree = "<group>"; };
+		400EE821BB2366A0509AB59F /* ConsentDocumentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentDocumentSheet.swift; sourceTree = "<group>"; };
+		47262DC52CB4D4C66C5D2632 /* PageTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageTitle.swift; sourceTree = "<group>"; };
+		481E07885240CC1BC5710402 /* OnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStore.swift; sourceTree = "<group>"; };
+		55B1BA619133BF1493C70FD5 /* NivaraTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NivaraTheme.swift; sourceTree = "<group>"; };
+		5774DAAA1CDC487966D97131 /* IEEE11073.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IEEE11073.swift; sourceTree = "<group>"; };
+		595C34CC941E1D118EAAFA94 /* OnboardingDeviceSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingDeviceSetupView.swift; sourceTree = "<group>"; };
+		5AA2AB969A321FCE589E1A8C /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		5BE8E7E7011297FBEA054434 /* MedicationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationsView.swift; sourceTree = "<group>"; };
+		5F470AC167B0DC4D0433F8C3 /* GlucoseHistoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseHistoryListView.swift; sourceTree = "<group>"; };
+		61361AECED4D891CDD7087B2 /* BloodPressureMeasurementParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BloodPressureMeasurementParser.swift; sourceTree = "<group>"; };
+		71A60F3EE08CAF414A18EC23 /* HbA1cHistoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HbA1cHistoryListView.swift; sourceTree = "<group>"; };
+		780259E2BA4536D864C850BD /* OnboardingBasicInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingBasicInfoView.swift; sourceTree = "<group>"; };
+		7C6E90453D408795026D4212 /* OnboardingConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingConsentView.swift; sourceTree = "<group>"; };
+		7CA7CD3FCDB1FA0A07C20875 /* NivaraPatientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NivaraPatientApp.swift; sourceTree = "<group>"; };
+		8374DD900A10B4EAB14F41C3 /* NivaraPatient.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NivaraPatient.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		84878E5B85EDF4DAD3C343C2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		86476B515C082781DB7070C1 /* CareTeamMember.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareTeamMember.swift; sourceTree = "<group>"; };
+		865CB8057FAD1C135EBD7A36 /* DeviceConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConnectionView.swift; sourceTree = "<group>"; };
+		8F3FB99241C3B437D625DDE7 /* SupabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseModels.swift; sourceTree = "<group>"; };
+		909EBCDC2439717F5F2490C6 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
+		90BB387EAF7B4D656D5A3194 /* OmronProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmronProtocol.swift; sourceTree = "<group>"; };
+		924F92C980F1BD21BCFF4DF6 /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
+		948E4CF48503A9B4A950E487 /* VitalsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitalsStore.swift; sourceTree = "<group>"; };
+		95FB6EE0D8726279DFF29DAD /* OnboardingCompleteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCompleteView.swift; sourceTree = "<group>"; };
+		986E4DD107F6B7DDEC0ED04D /* MealTimingConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealTimingConfirmationView.swift; sourceTree = "<group>"; };
+		9CED95D70B839E06E608FC51 /* MyHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyHealthView.swift; sourceTree = "<group>"; };
+		9E8D29A449F34FE39B5D2A28 /* JSONCoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONCoding.swift; sourceTree = "<group>"; };
+		A4F179B7B66F281E74DC38D1 /* OmronBLEHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmronBLEHandler.swift; sourceTree = "<group>"; };
+		AAAE6DD70E43490964A0A84D /* GATTConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GATTConstants.swift; sourceTree = "<group>"; };
+		AF2959FC9FB11862B2C871CE /* ConsentDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentDocuments.swift; sourceTree = "<group>"; };
+		B0CFC2BC2BA3278B1A928A2D /* OnboardingWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWelcomeView.swift; sourceTree = "<group>"; };
+		B23F74DF7D1E40DE35B2E9D6 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		B3B5D39448BB69ED4727DD9C /* DateFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormatting.swift; sourceTree = "<group>"; };
+		B3CC1D71ECEEEEE35A3B8DBC /* OnboardingScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScaffold.swift; sourceTree = "<group>"; };
+		B69B99C06254A484E52464CE /* PatientModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientModels.swift; sourceTree = "<group>"; };
+		BD59B6077C92E685F7F6C5B2 /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTab.swift; sourceTree = "<group>"; };
+		BE1DABB5071C638742E1C683 /* GlucoseMeasurementParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseMeasurementParser.swift; sourceTree = "<group>"; };
+		C5ACAE7451533DC71118E34C /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
+		CC388BF74FF7DA2E5F951AC1 /* CareTeamConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareTeamConversationView.swift; sourceTree = "<group>"; };
+		D975A477E0AD0A11E373954F /* ClinicalGuidelines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalGuidelines.swift; sourceTree = "<group>"; };
+		EE531E24952BF67D5E581869 /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
+		F59C16DF28EB32440A03FED4 /* PatientViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientViewModel.swift; sourceTree = "<group>"; };
+		F610F206EE24C8FC23E51E21 /* DemoPatientData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPatientData.swift; sourceTree = "<group>"; };
+		F7FEBE425026F93A85F59A35 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		F9855BAD67E64382C2FACC67 /* BPHistoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BPHistoryListView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BDE5F0FFCDDCF02C002972C6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				66FE1A6609256D9864E55277 /* Supabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		131D7FB72C926C6BFD40DC56 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8374DD900A10B4EAB14F41C3 /* NivaraPatient.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		165636405ACE685A82B7BFBB /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				BD59B6077C92E685F7F6C5B2 /* AppTab.swift */,
+				F9855BAD67E64382C2FACC67 /* BPHistoryListView.swift */,
+				CC388BF74FF7DA2E5F951AC1 /* CareTeamConversationView.swift */,
+				86476B515C082781DB7070C1 /* CareTeamMember.swift */,
+				2BB2C487DC501499C408BE71 /* CareTeamView.swift */,
+				3E692D24448CE1134B9D440D /* ContactUsView.swift */,
+				865CB8057FAD1C135EBD7A36 /* DeviceConnectionView.swift */,
+				5F470AC167B0DC4D0433F8C3 /* GlucoseHistoryListView.swift */,
+				71A60F3EE08CAF414A18EC23 /* HbA1cHistoryListView.swift */,
+				B23F74DF7D1E40DE35B2E9D6 /* HomeView.swift */,
+				986E4DD107F6B7DDEC0ED04D /* MealTimingConfirmationView.swift */,
+				5BE8E7E7011297FBEA054434 /* MedicationsView.swift */,
+				9CED95D70B839E06E608FC51 /* MyHealthView.swift */,
+				84878E5B85EDF4DAD3C343C2 /* RootView.swift */,
+				C1E11FA6424F7A8318E3F73E /* Components */,
+				806E387223DE50A5062D250C /* Onboarding */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		35A81E93380967C31B7E35AE /* Guidelines */ = {
+			isa = PBXGroup;
+			children = (
+				D975A477E0AD0A11E373954F /* ClinicalGuidelines.swift */,
+			);
+			path = Guidelines;
+			sourceTree = "<group>";
+		};
+		3FE0822797C5C033759495AD /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				55B1BA619133BF1493C70FD5 /* NivaraTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		4ABDEF357D27482C481D100C /* Bluetooth */ = {
+			isa = PBXGroup;
+			children = (
+				04D7FC028A4913869094C7B9 /* BLEManager.swift */,
+				61361AECED4D891CDD7087B2 /* BloodPressureMeasurementParser.swift */,
+				AAAE6DD70E43490964A0A84D /* GATTConstants.swift */,
+				02DA1C5F12E254975D532212 /* GATTDataHelpers.swift */,
+				BE1DABB5071C638742E1C683 /* GlucoseMeasurementParser.swift */,
+				5774DAAA1CDC487966D97131 /* IEEE11073.swift */,
+				A4F179B7B66F281E74DC38D1 /* OmronBLEHandler.swift */,
+				90BB387EAF7B4D656D5A3194 /* OmronProtocol.swift */,
+				314F8F187D8DD1D347A46CCD /* OmronRecordParser.swift */,
+			);
+			path = Bluetooth;
+			sourceTree = "<group>";
+		};
+		6DAFEA76FD64827CE1F6F0CD = {
+			isa = PBXGroup;
+			children = (
+				8D75620F88DF2008A3F6F1D7 /* NivaraPatient */,
+				131D7FB72C926C6BFD40DC56 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		806E387223DE50A5062D250C /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				400EE821BB2366A0509AB59F /* ConsentDocumentSheet.swift */,
+				780259E2BA4536D864C850BD /* OnboardingBasicInfoView.swift */,
+				95FB6EE0D8726279DFF29DAD /* OnboardingCompleteView.swift */,
+				7C6E90453D408795026D4212 /* OnboardingConsentView.swift */,
+				595C34CC941E1D118EAAFA94 /* OnboardingDeviceSetupView.swift */,
+				924F92C980F1BD21BCFF4DF6 /* OnboardingFlowView.swift */,
+				B3CC1D71ECEEEEE35A3B8DBC /* OnboardingScaffold.swift */,
+				B0CFC2BC2BA3278B1A928A2D /* OnboardingWelcomeView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		88993A8DAADFFBFC0E359776 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				AF2959FC9FB11862B2C871CE /* ConsentDocuments.swift */,
+				F610F206EE24C8FC23E51E21 /* DemoPatientData.swift */,
+				B69B99C06254A484E52464CE /* PatientModels.swift */,
+				8F3FB99241C3B437D625DDE7 /* SupabaseModels.swift */,
+				36470959BDA73C33DD7661C3 /* VitalModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		8B360632ADA754D5D4AEEFE1 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				5AA2AB969A321FCE589E1A8C /* ChatViewModel.swift */,
+				9E8D29A449F34FE39B5D2A28 /* JSONCoding.swift */,
+				481E07885240CC1BC5710402 /* OnboardingStore.swift */,
+				F59C16DF28EB32440A03FED4 /* PatientViewModel.swift */,
+				948E4CF48503A9B4A950E487 /* VitalsStore.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		8D75620F88DF2008A3F6F1D7 /* NivaraPatient */ = {
+			isa = PBXGroup;
+			children = (
+				7CA7CD3FCDB1FA0A07C20875 /* NivaraPatientApp.swift */,
+				4ABDEF357D27482C481D100C /* Bluetooth */,
+				35A81E93380967C31B7E35AE /* Guidelines */,
+				88993A8DAADFFBFC0E359776 /* Models */,
+				E77EE5770CA55A773D14A9B9 /* Services */,
+				3FE0822797C5C033759495AD /* Theme */,
+				8B360632ADA754D5D4AEEFE1 /* ViewModels */,
+				165636405ACE685A82B7BFBB /* Views */,
+			);
+			path = NivaraPatient;
+			sourceTree = "<group>";
+		};
+		C1E11FA6424F7A8318E3F73E /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				B3B5D39448BB69ED4727DD9C /* DateFormatting.swift */,
+				47262DC52CB4D4C66C5D2632 /* PageTitle.swift */,
+				F7FEBE425026F93A85F59A35 /* StatusBadge.swift */,
+				03EC5329179FC072CBAF13D3 /* ToastBanner.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		E77EE5770CA55A773D14A9B9 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				EE531E24952BF67D5E581869 /* DeviceIdentity.swift */,
+				C5ACAE7451533DC71118E34C /* SupabaseConfig.swift */,
+				17190EE4EBB35EB624AF2FCF /* SupabaseConfig.swift.example */,
+				909EBCDC2439717F5F2490C6 /* SupabaseService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		510483C3FA3D9FD3B7596273 /* NivaraPatient */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D8A52C6A6AC0FDA3326A190C /* Build configuration list for PBXNativeTarget "NivaraPatient" */;
+			buildPhases = (
+				F955388EDBFA3DC9A4F928B0 /* Sources */,
+				A7DBE6BCFA84C8B3D68D769B /* Resources */,
+				BDE5F0FFCDDCF02C002972C6 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NivaraPatient;
+			packageProductDependencies = (
+				70D3897CC57C13EAD5B8923B /* Supabase */,
+			);
+			productName = NivaraPatient;
+			productReference = 8374DD900A10B4EAB14F41C3 /* NivaraPatient.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		944362D61B8BB5A3563FA39F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					510483C3FA3D9FD3B7596273 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 7EC5F06BEA009DB04F56DB16 /* Build configuration list for PBXProject "NivaraPatient" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 6DAFEA76FD64827CE1F6F0CD;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				245E57745C83A34C45EC0AD9 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 131D7FB72C926C6BFD40DC56 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				510483C3FA3D9FD3B7596273 /* NivaraPatient */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A7DBE6BCFA84C8B3D68D769B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ACBCDC29BC2AB099ABDBBA26 /* SupabaseConfig.swift.example in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F955388EDBFA3DC9A4F928B0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AAD88F89B8ACFEF1CDBF32BD /* AppTab.swift in Sources */,
+				629527AE8DD4E968562BE2F0 /* BLEManager.swift in Sources */,
+				BA0AA22FAD238653A0E3CC71 /* BPHistoryListView.swift in Sources */,
+				42C6AE3493646159D37D0E76 /* BloodPressureMeasurementParser.swift in Sources */,
+				ABE150C4E59F392978D15D96 /* CareTeamConversationView.swift in Sources */,
+				1620719B709BF68A1A82E509 /* CareTeamMember.swift in Sources */,
+				38472980E57BD1CBBFDACD0B /* CareTeamView.swift in Sources */,
+				05B22759FE4D2F761D1B0F3D /* ChatViewModel.swift in Sources */,
+				15C6F6D9869ED609692239B3 /* ClinicalGuidelines.swift in Sources */,
+				B9503AE738CFB3EBB363100E /* ConsentDocumentSheet.swift in Sources */,
+				7F67AC309CED4841AEB675F5 /* ConsentDocuments.swift in Sources */,
+				1C32440BA9F204F45D20F583 /* ContactUsView.swift in Sources */,
+				6A8A563F70852A51D951BCD8 /* DateFormatting.swift in Sources */,
+				09B573AD422A9ECF374930E0 /* DemoPatientData.swift in Sources */,
+				9A1A613DF80E65709C4F4299 /* DeviceConnectionView.swift in Sources */,
+				28769397BDD7EFBEF02B4AC2 /* DeviceIdentity.swift in Sources */,
+				05FA5DDD30E540D5BC649710 /* GATTConstants.swift in Sources */,
+				A4C51AF9B18157063DCAA7AA /* GATTDataHelpers.swift in Sources */,
+				2324E3DDDD571CC9DDDF58FE /* GlucoseHistoryListView.swift in Sources */,
+				9A136B55B6AD026E35DCFB4E /* GlucoseMeasurementParser.swift in Sources */,
+				918EACF55BECFDFE6F02AA89 /* HbA1cHistoryListView.swift in Sources */,
+				5E9A1EC5BB794B7497188044 /* HomeView.swift in Sources */,
+				1DC760ED42EC8216F1569F63 /* IEEE11073.swift in Sources */,
+				AD476D3DB6B97648D2ADF170 /* JSONCoding.swift in Sources */,
+				A25FE361AA511F0DA4F47641 /* MealTimingConfirmationView.swift in Sources */,
+				1285F112DF3D134D844B9CBE /* MedicationsView.swift in Sources */,
+				DC005B7C2B8372A71E1B0C5F /* MyHealthView.swift in Sources */,
+				558B2B1CD2C3E0757B04D03E /* NivaraPatientApp.swift in Sources */,
+				A8E1F37D4145A0F6EDCA5C19 /* NivaraTheme.swift in Sources */,
+				7D284182367D9E9D85608FDF /* OmronBLEHandler.swift in Sources */,
+				2711ACD694A64AF1395FEA5D /* OmronProtocol.swift in Sources */,
+				7A1294F8500658F059E8F33A /* OmronRecordParser.swift in Sources */,
+				1F00756D94F80E99CE4D35A0 /* OnboardingBasicInfoView.swift in Sources */,
+				1D30FBE6F5ADE7C748F7A895 /* OnboardingCompleteView.swift in Sources */,
+				0216B102EE441BEF4D3BCC3D /* OnboardingConsentView.swift in Sources */,
+				CEE1756A33603C483B4DAB66 /* OnboardingDeviceSetupView.swift in Sources */,
+				F02E9D680DC7B5947BECEC32 /* OnboardingFlowView.swift in Sources */,
+				B02944265D632423F53CC8CA /* OnboardingScaffold.swift in Sources */,
+				6868FCB2173D4A8383034C08 /* OnboardingStore.swift in Sources */,
+				8F119B5B42ED876912999E2F /* OnboardingWelcomeView.swift in Sources */,
+				89640CAAC4F3EF3DE7161EA2 /* PageTitle.swift in Sources */,
+				5D19E26722FDFA6E2880697A /* PatientModels.swift in Sources */,
+				62471D241C87E6CD9B1FE92B /* PatientViewModel.swift in Sources */,
+				F29762D204B28227725A7EC9 /* RootView.swift in Sources */,
+				7B456F9E9DF78CBD24375AC7 /* StatusBadge.swift in Sources */,
+				F678128C202C414DF28E4891 /* SupabaseConfig.swift in Sources */,
+				8E4C60BBCDE66EC0D5F27443 /* SupabaseModels.swift in Sources */,
+				8F6730FCABAC7A1F930F71B5 /* SupabaseService.swift in Sources */,
+				FAD631294D14132B86645A1D /* ToastBanner.swift in Sources */,
+				FF30BB6875ADED8959294D43 /* VitalModels.swift in Sources */,
+				42DA8FB77ACAC2A7A3FBA376 /* VitalsStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		110BE1D5342BBA511D74531F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Nivara;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nivara.patient;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		928027D0E505F77FBC840C9E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Nivara;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nivara.patient;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A38026230BF23A9ACA648D27 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		EECF991B4EEEFDC3539E7E67 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7EC5F06BEA009DB04F56DB16 /* Build configuration list for PBXProject "NivaraPatient" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EECF991B4EEEFDC3539E7E67 /* Debug */,
+				A38026230BF23A9ACA648D27 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D8A52C6A6AC0FDA3326A190C /* Build configuration list for PBXNativeTarget "NivaraPatient" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				110BE1D5342BBA511D74531F /* Debug */,
+				928027D0E505F77FBC840C9E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		245E57745C83A34C45EC0AD9 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		70D3897CC57C13EAD5B8923B /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 245E57745C83A34C45EC0AD9 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 944362D61B8BB5A3563FA39F /* Project object */;
+}
