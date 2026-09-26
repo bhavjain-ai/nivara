@@ -24,6 +24,16 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
+        # Single 1024x1024 source image (Assets.xcassets/AppIcon.appiconset) —
+        # Xcode 14+ derives every smaller size (including the 120x120 iPhone
+        # icon App Store Connect validates) automatically, and the asset
+        # catalog compiler injects the required CFBundleIconName Info.plist
+        # key as part of processing this. Without this setting (or without
+        # any app icon at all, which is what this project had until it hit
+        # "Missing Info.plist value ... CFBundleIconName" / "Missing required
+        # icon file" on TestFlight upload), archiving still succeeds locally
+        # but App Store Connect rejects the upload outright.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # This Xcode version keeps forcing a build-setting-generated
         # Info.plist regardless of GENERATE_INFOPLIST_FILE=NO + a physical
         # file (it was silently rewriting NivaraPatient/Info.plist back to
