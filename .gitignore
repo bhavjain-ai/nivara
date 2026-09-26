@@ -13,7 +13,15 @@ android/local.properties
 *.hprof
 
 # iOS
-ios/**/*.xcodeproj/
+#
+# NivaraPatient.xcodeproj IS committed (not ignored) — Xcode Cloud's
+# ci_post_clone.sh/XcodeGen regeneration step proved unreliable (a known,
+# unresolved Xcode Cloud issue, not specific to this repo), so the
+# generated project file is checked in directly instead. project.yml
+# remains the source of truth for local dev — regenerate with
+# `xcodegen generate` and re-commit the result after changing it.
+# xcuserdata/ (per-user window layout, breakpoints, etc.) stays ignored
+# regardless, since none of that is meant to be shared.
 ios/**/DerivedData/
 ios/**/xcuserdata/
 ios/**/.build/

@@ -41,14 +41,27 @@ in, rather than relying on a standard profile Omron doesn't implement.
   pressure cuff to test against, or use the app on its own with the bundled
   demo history
 
-This repo does not include a `.xcodeproj` (hand-written Xcode project files
-are brittle and easy to corrupt). Generate one with **XcodeGen**:
+`NivaraPatient.xcodeproj` **is committed** to this repo, so `open
+ios/NivaraPatient/NivaraPatient.xcodeproj` in Xcode is all you need to get
+started — no generation step required.
+
+`project.yml` (also in this directory) is still the source of truth for
+project configuration, managed via **XcodeGen**: it originally existed to
+avoid multi-person merge conflicts in the pbxproj format, and Xcode Cloud
+was meant to regenerate the project from it automatically via
+`ci_scripts/ci_post_clone.sh`. That automatic regeneration turned out to be
+unreliable (Xcode Cloud intermittently fails to detect `ci_scripts` at
+all — a known, unresolved issue, not specific to this repo), so the
+generated project is checked in directly instead, and this is now the
+supported way to build. If you change `project.yml`, regenerate and
+re-commit the result:
 
 ```bash
-brew install xcodegen
+brew install xcodegen   # if you don't have it already
 cd ios/NivaraPatient
 xcodegen generate
-open NivaraPatient.xcodeproj
+git add NivaraPatient.xcodeproj
+git commit -m "Regenerate NivaraPatient.xcodeproj from project.yml"
 ```
 
 Then in Xcode: select your iPhone as the run destination and hit Run. On
