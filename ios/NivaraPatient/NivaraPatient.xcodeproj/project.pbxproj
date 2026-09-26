@@ -31,6 +31,7 @@
 		629527AE8DD4E968562BE2F0 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D7FC028A4913869094C7B9 /* BLEManager.swift */; };
 		66FE1A6609256D9864E55277 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 70D3897CC57C13EAD5B8923B /* Supabase */; };
 		6868FCB2173D4A8383034C08 /* OnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 481E07885240CC1BC5710402 /* OnboardingStore.swift */; };
+		68D3BBD4A420AA1A2377FC62 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A3BDBAC9A76ECFE56BC6E53 /* Assets.xcassets */; };
 		6A8A563F70852A51D951BCD8 /* DateFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B5D39448BB69ED4727DD9C /* DateFormatting.swift */; };
 		7A1294F8500658F059E8F33A /* OmronRecordParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314F8F187D8DD1D347A46CCD /* OmronRecordParser.swift */; };
 		7B456F9E9DF78CBD24375AC7 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FEBE425026F93A85F59A35 /* StatusBadge.swift */; };
@@ -89,6 +90,7 @@
 		84878E5B85EDF4DAD3C343C2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		86476B515C082781DB7070C1 /* CareTeamMember.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareTeamMember.swift; sourceTree = "<group>"; };
 		865CB8057FAD1C135EBD7A36 /* DeviceConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConnectionView.swift; sourceTree = "<group>"; };
+		8A3BDBAC9A76ECFE56BC6E53 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8F3FB99241C3B437D625DDE7 /* SupabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseModels.swift; sourceTree = "<group>"; };
 		909EBCDC2439717F5F2490C6 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		90BB387EAF7B4D656D5A3194 /* OmronProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmronProtocol.swift; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 		8D75620F88DF2008A3F6F1D7 /* NivaraPatient */ = {
 			isa = PBXGroup;
 			children = (
+				8A3BDBAC9A76ECFE56BC6E53 /* Assets.xcassets */,
 				7CA7CD3FCDB1FA0A07C20875 /* NivaraPatientApp.swift */,
 				4ABDEF357D27482C481D100C /* Bluetooth */,
 				35A81E93380967C31B7E35AE /* Guidelines */,
@@ -341,6 +344,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				68D3BBD4A420AA1A2377FC62 /* Assets.xcassets in Resources */,
 				ACBCDC29BC2AB099ABDBBA26 /* SupabaseConfig.swift.example in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
