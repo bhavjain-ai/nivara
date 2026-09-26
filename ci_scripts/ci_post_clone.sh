@@ -3,6 +3,12 @@
 # Xcode Cloud custom build script — runs automatically right after Xcode
 # Cloud clones the repo, before it tries to resolve/build anything.
 #
+# Lives at the REPOSITORY ROOT (ci_scripts/ci_post_clone.sh), not next to
+# NivaraPatient's project.yml — Xcode Cloud only looks for ci_scripts
+# there, confirmed directly from a real build log ("Post-Clone script not
+# found at ci_scripts/ci_post_clone.sh" when this was first placed next to
+# the project instead).
+#
 # This repo deliberately doesn't commit NivaraPatient.xcodeproj (see
 # ios/NivaraPatient/README.md — hand-maintained Xcode project files are
 # brittle and easy to corrupt); it's generated from project.yml via
