@@ -25,4 +25,7 @@ android/local.properties
 ios/**/DerivedData/
 ios/**/xcuserdata/
 ios/**/.build/
-ios/**/SupabaseConfig.swift
+# SupabaseConfig.swift IS committed (with safe placeholder values only —
+# see its doc comment) so a fresh checkout / Xcode Cloud has a real file
+# to compile against. Fill in real values locally, then run
+# `git update-index --skip-worktree` on it so your keys never get staged.
