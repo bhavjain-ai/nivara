@@ -60,6 +60,16 @@ final class BLEManager: NSObject, ObservableObject {
     /// already resolved one way or another" from "still waiting."
     private var connectingPeripheralID: UUID?
 
+    /// Persists the identifier of the last device the patient successfully
+    /// connected to, so a later app open can reconnect directly (see
+    /// `autoReconnectIfKnownDevice`) instead of requiring a manual "Scan for
+    /// Devices" tap every single time — the friction uncle specifically
+    /// flagged. Deliberately never cleared on disconnect: a dropped
+    /// connection (read finished, OS cleanup, out of range) isn't the
+    /// patient switching devices, so the next auto-reconnect should still
+    /// target the same one.
+    private static let lastKnownPeripheralDefaultsKey = "ble.lastKnownPeripheralID"
+
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -86,6 +96,35 @@ final class BLEManager: NSObject, ObservableObject {
     func stopScanning() {
         centralManager.stopScan()
         if case .scanning = state { state = .idle }
+    }
+
+    /// Reconnects to the last device the patient successfully connected to,
+    /// without requiring a manual "Scan for Devices" tap — called when Home
+    /// appears (and again from `centralManagerDidUpdateState` in case
+    /// Bluetooth wasn't ready yet the first time this was called, e.g. right
+    /// at cold launch). Uses `retrievePeripherals(withIdentifiers:)` rather
+    /// than a fresh scan — CoreBluetooth already knows this peripheral from
+    /// a prior connection, so this can connect directly instead of waiting
+    /// on advertisement packets.
+    ///
+    /// Silently no-ops rather than erroring if there's no known device yet
+    /// (first-time patient), Bluetooth isn't ready, a connection is already
+    /// in flight/established, or the known device isn't currently in range
+    /// (retrievePeripherals simply returns empty) — this is a best-effort
+    /// background convenience the patient didn't explicitly ask for on this
+    /// particular screen visit, not a user-initiated action whose failure
+    /// deserves an error banner. The manual Devices screen remains the
+    /// explicit, visible way to pair a new device or retry a real failure.
+    func autoReconnectIfKnownDevice() {
+        guard centralManager.state == .poweredOn else { return }
+        guard case .idle = state else { return }
+        guard let idString = UserDefaults.standard.string(forKey: Self.lastKnownPeripheralDefaultsKey),
+              let id = UUID(uuidString: idString) else { return }
+
+        guard let peripheral = centralManager.retrievePeripherals(withIdentifiers: [id]).first else { return }
+        peripherals[peripheral.identifier] = peripheral
+        let device = DiscoveredDevice(id: peripheral.identifier, name: peripheral.name ?? "Device", rssi: 0, kind: .unknown)
+        connect(to: device)
     }
 
     func connect(to device: DiscoveredDevice) {
@@ -174,7 +213,12 @@ extension BLEManager: CBCentralManagerDelegate {
         switch central.state {
         case .poweredOff: state = .poweredOff
         case .unauthorized: state = .unauthorized
-        case .poweredOn: state = .idle
+        case .poweredOn:
+            state = .idle
+            // Covers the cold-launch race where Home's onAppear (and its
+            // own autoReconnectIfKnownDevice() call) fires before
+            // CoreBluetooth has finished reporting its real state.
+            autoReconnectIfKnownDevice()
         default: break
         }
     }
@@ -209,6 +253,7 @@ extension BLEManager: CBCentralManagerDelegate {
         peripheral.discoverServices([GATT.glucoseService, GATT.bloodPressureService, OmronProtocol.parentService])
         connectedDeviceName = peripheral.name ?? "Device"
         state = .connected(peripheral.name ?? "Device")
+        UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: Self.lastKnownPeripheralDefaultsKey)
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
