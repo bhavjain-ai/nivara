@@ -27,6 +27,22 @@ struct HomeView: View {
         }
     }
 
+    /// A short "in progress" label while `autoReconnectIfKnownDevice()` is
+    /// actively working — nil (and so hidden) for every other BLE state,
+    /// deliberately including `.failed`: this is a background convenience
+    /// triggered just by opening the app, not something the patient asked
+    /// for on this screen, so a failure (device out of range, Bluetooth
+    /// off, nothing paired yet) should stay invisible here rather than
+    /// read as an error. The Devices screen remains where a patient-
+    /// initiated attempt shows its real outcome.
+    private var autoSyncStatusText: String? {
+        switch viewModel.bleManager.state {
+        case .connecting: return "Connecting to your device…"
+        case .readingOmronHistory(let message): return message
+        default: return nil
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -40,6 +56,15 @@ struct HomeView: View {
                             .foregroundStyle(NivaraColor.textSecondary)
                     }
                     .padding(.top, 8)
+
+                    if let autoSyncStatusText {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text(autoSyncStatusText)
+                                .font(.caption)
+                                .foregroundStyle(NivaraColor.textSecondary)
+                        }
+                    }
 
                     if let reassurance = viewModel.postMeasurementMessage {
                         reassuranceCard(reassurance)
@@ -64,6 +89,16 @@ struct HomeView: View {
             }
             .background(NivaraColor.cream)
             .navigationBarHidden(true)
+            .onAppear {
+                // The friction patients (and testers) specifically flagged:
+                // having to manually open Devices and tap "Scan" every time
+                // just to pull in a reading already sitting on a
+                // previously-paired meter/cuff. Reconnecting here means
+                // that, for the common case of the same device, a reading
+                // is already syncing in the background before the patient
+                // finishes reading their greeting.
+                viewModel.bleManager.autoReconnectIfKnownDevice()
+            }
         }
     }
 
