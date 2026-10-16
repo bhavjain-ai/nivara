@@ -11,7 +11,7 @@ import { MedicationPanel } from '@/components/patient/MedicationPanel';
 import { CoachingPanel } from '@/components/patient/CoachingPanel';
 import { Badge } from '@/components/ui/Badge';
 import { getPatientById } from '@/lib/mock-data';
-import { AlertStatus, Patient, VitalReading } from '@/types';
+import { AlertStatus, Condition, Patient, VitalReading } from '@/types';
 import { MapPin, Phone, Calendar, User, ArrowLeft, Wifi } from 'lucide-react';
 import Link from 'next/link';
 
@@ -47,14 +47,17 @@ export default function PatientDetailPage({ params }: PageProps) {
 
         setHasLiveData(true);
 
+        const liveVitals: VitalReading[] = (liveRecord.vitals ?? []).map((v: {
+          date: string; systolic?: number; diastolic?: number; glucose?: number; glucoseType?: 'fasting' | 'post-meal';
+        }) => ({
+          date: v.date,
+          systolic: v.systolic,
+          diastolic: v.diastolic,
+          glucose: v.glucose,
+          glucoseType: v.glucoseType,
+        }));
+
         if (basePatient) {
-          const liveVitals: VitalReading[] = (liveRecord.liveReadings ?? []).map((r: {
-            systolic: number; diastolic: number; timestamp: string;
-          }) => ({
-            date: r.timestamp.split('T')[0],
-            systolic: r.systolic,
-            diastolic: r.diastolic,
-          }));
           const existingDates = new Set(basePatient.vitals.map((v: VitalReading) => v.date));
           const newVitals = liveVitals.filter(v => !existingDates.has(v.date));
           setPatient({
@@ -63,26 +66,22 @@ export default function PatientDetailPage({ params }: PageProps) {
             lastReadingTime: liveRecord.lastReadingTime,
           });
         } else {
-          const liveVitals: VitalReading[] = (liveRecord.liveReadings ?? []).map((r: {
-            systolic: number; diastolic: number; timestamp: string;
-          }) => ({
-            date: r.timestamp.split('T')[0],
-            systolic: r.systolic,
-            diastolic: r.diastolic,
-          }));
+          const conditions: Condition[] = (liveRecord.conditions && liveRecord.conditions.length > 0)
+            ? liveRecord.conditions
+            : ['Hypertension'];
           setPatient({
             id: liveRecord.id,
             name: liveRecord.name,
             age: liveRecord.age ?? 0,
             gender: 'Male',
-            conditions: ['Hypertension'],
+            conditions,
             comorbidities: [],
-            city: '—',
-            phoneNumber: '—',
-            physicianName: 'Unassigned',
+            city: liveRecord.city ?? '—',
+            phoneNumber: liveRecord.phoneNumber ?? '—',
+            physicianName: liveRecord.physicianName ?? 'Unassigned',
             enrollmentDate: liveRecord.enrollmentDate ?? new Date().toISOString().split('T')[0],
-            htnStep: 1,
-            diabetesStep: null,
+            htnStep: conditions.includes('Hypertension') ? 1 : null,
+            diabetesStep: conditions.includes('Diabetes') ? 'metformin' : null,
             hba1cTier: null,
             hba1cReadings: [],
             medications: [],

@@ -21,32 +21,43 @@ interface LiveReading {
   timestamp: string;
 }
 
+interface LiveVital {
+  date: string;
+  systolic?: number;
+  diastolic?: number;
+  glucose?: number;
+  glucoseType?: 'fasting' | 'post-meal';
+}
+
 interface LivePatient {
   id: string;
   name: string;
-  condition: string;
+  conditions: string[];
   city: string;
   alertStatus: string;
   lastReadingTime: string;
   liveReadings: LiveReading[];
   isLive: boolean;
-  age?: number;
-  vitals?: Array<{ date: string; systolic?: number; diastolic?: number }>;
+  age?: number | null;
+  vitals?: LiveVital[];
 }
 
 function buildLiveSummary(p: LivePatient) {
-  const latest = p.liveReadings[0];
+  const latestVital = p.vitals?.find(v => v.systolic != null);
+  const latestGlucoseVital = p.vitals?.find(v => v.glucose != null);
   return {
     id: p.id,
     name: p.name,
     age: p.age ?? 0,
-    conditions: ['Hypertension'] as Condition[],
+    conditions: (p.conditions.length > 0 ? p.conditions : ['Hypertension']) as Condition[],
     city: p.city,
     alertStatus: p.alertStatus as AlertStatus,
     lastReadingTime: p.lastReadingTime,
     isLive: true,
     latestVitals: {
-      bp: latest ? `${latest.systolic}/${latest.diastolic}` : undefined,
+      bp: latestVital ? `${latestVital.systolic}/${latestVital.diastolic}` : undefined,
+      glucose: latestGlucoseVital?.glucose,
+      glucoseType: latestGlucoseVital?.glucoseType,
     },
     coachingTier: 'Maintenance-touch' as const,
     coachingCallsCompleted: 0,
@@ -90,15 +101,17 @@ export default function DashboardPage() {
   const mergedPatients = basePatients.map(p => {
     const live = liveById.get(p.id);
     if (!live) return p;
-    const latest = live.liveReadings[0];
+    const latestVital = live.vitals?.find(v => v.systolic != null);
+    const latestGlucoseVital = live.vitals?.find(v => v.glucose != null);
     return {
       ...p,
       lastReadingTime: live.lastReadingTime,
       alertStatus: live.alertStatus as AlertStatus,
       isLive: true,
       latestVitals: {
-        ...p.latestVitals,
-        bp: latest ? `${latest.systolic}/${latest.diastolic}` : p.latestVitals.bp,
+        bp: latestVital ? `${latestVital.systolic}/${latestVital.diastolic}` : p.latestVitals.bp,
+        glucose: latestGlucoseVital?.glucose ?? p.latestVitals.glucose,
+        glucoseType: latestGlucoseVital?.glucoseType ?? p.latestVitals.glucoseType,
       },
     };
   });
@@ -106,7 +119,7 @@ export default function DashboardPage() {
   // Append truly new patients (IDs not in mock data), applying condition filter
   const newLivePatients = livePatients
     .filter(p => !knownMockIds.has(p.id))
-    .filter(p => conditionFilter === 'All' || p.condition === conditionFilter)
+    .filter(p => conditionFilter === 'All' || p.conditions.includes(conditionFilter))
     .map(buildLiveSummary);
 
   const allPatients = [...mergedPatients, ...newLivePatients];
@@ -125,8 +138,10 @@ export default function DashboardPage() {
 
   const counts: Record<string, number> = {
     All: mockPatients.length + liveNewCount,
-    Hypertension: mockPatients.filter((p) => p.conditions.includes('Hypertension')).length + livePatients.filter(p => !knownMockIds.has(p.id) && p.condition === 'Hypertension').length,
-    Diabetes: mockPatients.filter((p) => p.conditions.includes('Diabetes')).length,
+    Hypertension: mockPatients.filter((p) => p.conditions.includes('Hypertension')).length
+      + livePatients.filter(p => !knownMockIds.has(p.id) && p.conditions.includes('Hypertension')).length,
+    Diabetes: mockPatients.filter((p) => p.conditions.includes('Diabetes')).length
+      + livePatients.filter(p => !knownMockIds.has(p.id) && p.conditions.includes('Diabetes')).length,
   };
 
   return (

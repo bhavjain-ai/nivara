@@ -110,6 +110,60 @@ struct NewChatMessage: Encodable {
     }
 }
 
+/// New outgoing BP reading — see SupabaseService.pushBPReading. No id/
+/// created_at (database-assigned); recordedAt is the reading's own
+/// timestamp (device-reported or capture time), distinct from created_at
+/// (when the row was inserted).
+struct NewBPReading: Encodable {
+    let patientId: UUID
+    let systolic: Int
+    let diastolic: Int
+    let pulse: Int?
+    let source: String
+    let recordedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case patientId = "patient_id"
+        case systolic
+        case diastolic
+        case pulse
+        case source
+        case recordedAt = "recorded_at"
+    }
+}
+
+/// New outgoing glucose reading — see SupabaseService.pushGlucoseReading.
+struct NewGlucoseReading: Encodable {
+    let patientId: UUID
+    let mgDl: Int
+    let sampleType: String
+    let source: String
+    let recordedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case patientId = "patient_id"
+        case mgDl = "mg_dl"
+        case sampleType = "sample_type"
+        case source
+        case recordedAt = "recorded_at"
+    }
+}
+
+/// Maps to the `source` check constraint in bp_readings/glucose_readings
+/// (supabase/migrations/0001_init.sql: 'ble_device' | 'manual' | 'demo') —
+/// deliberately distinct from `ReadingSource.rawValue`, which is that
+/// enum's own display string for local UI use ("BLE Device", etc.), not
+/// the database's expected wire value.
+extension ReadingSource {
+    var supabaseValue: String {
+        switch self {
+        case .bleDevice: return "ble_device"
+        case .manual: return "manual"
+        case .demo: return "demo"
+        }
+    }
+}
+
 enum SupabaseDate {
     private static let withFractionalSeconds: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllLivePatients, getLivePatient } from '@/lib/reading-store';
+import { getLiveSupabasePatients } from '@/lib/supabase-live';
 import { mockPatients } from '@/lib/mock-data';
 
 export const dynamic = 'force-dynamic';
@@ -7,15 +8,29 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/patients/live
  *
- * Returns all live readings merged with mock patient records.
+ * Returns all live readings merged with mock patient records, from two
+ * independent sources:
+ * - The older flat-file reading-store (BP only) — nothing in the current
+ *   iOS app posts to this; kept for whatever originally relied on it.
+ * - Supabase (BP + glucose) — the real path, fed by the iOS app's
+ *   SupabaseService.pushBPReading/pushGlucoseReading once a patient has a
+ *   real Supabase project configured (see SUPABASE_SETUP.md). Returns []
+ *   gracefully if Supabase isn't configured.
+ *
+ * Both sources report into the same per-patient `vitals`-shaped reading
+ * list (systolic/diastolic for BP, glucose/glucoseType for glucose, same
+ * as mock-data.ts's own VitalReading entries), so a real patient with
+ * both a BP cuff and a glucose meter shows both on one chart.
+ *
  * - Known patient IDs (matching mock data): live readings prepended to their vitals.
  * - Unknown patient IDs: minimal patient record built from live readings only.
  */
 export async function GET() {
   const liveRecords = getAllLivePatients();
+  const supabasePatients = await getLiveSupabasePatients();
   const knownIds = new Set(mockPatients.map(p => p.id));
 
-  const result = liveRecords.map(record => {
+  const fromFlatFile = liveRecords.map(record => {
     const mockPatient = mockPatients.find(p => p.id === record.patientId);
     const latest = record.readings[0];
 
@@ -44,7 +59,7 @@ export async function GET() {
       name: `Patient ${record.patientId}`,
       age: null,
       gender: null,
-      condition: 'Hypertension', // kept as a flat string for the /api/patients/live wire format
+      conditions: ['Hypertension'],
       city: '—',
       phoneNumber: '—',
       physicianName: 'Unassigned',
@@ -60,8 +75,50 @@ export async function GET() {
     };
   });
 
+  const fromSupabase = supabasePatients
+    .filter(p => !knownIds.has(p.id)) // real patient_id UUIDs never collide with mock IDs, but guard anyway
+    .map(p => {
+      const bpVitals = p.bpReadings.map(r => ({
+        date: r.recordedAt.split('T')[0],
+        systolic: r.systolic,
+        diastolic: r.diastolic,
+      }));
+      const glucoseVitals = p.glucoseReadings.map(r => ({
+        date: r.recordedAt.split('T')[0],
+        glucose: r.mgDl,
+        glucoseType: r.sampleType,
+      }));
+      const vitals = [...bpVitals, ...glucoseVitals];
+      const latestBP = p.bpReadings[0];
+
+      return {
+        id: p.id,
+        name: p.name,
+        age: p.age,
+        gender: null,
+        conditions: p.conditions.length > 0 ? p.conditions : ['Hypertension'],
+        city: '—',
+        phoneNumber: '—',
+        physicianName: p.physicianName ?? 'Unassigned',
+        enrollmentDate: p.enrollmentDate.split('T')[0],
+        treatmentStep: 1,
+        medications: [],
+        alerts: [],
+        // BP-only, same scope as the flat-file path above — glucose-based
+        // alerting isn't wired into this merge yet.
+        alertStatus: getBpAlertStatus(latestBP?.systolic, latestBP?.diastolic),
+        lastReadingTime: p.lastReadingAt ? formatRelative(p.lastReadingAt) : 'No readings yet',
+        vitals,
+        isLive: true,
+        liveReadings: p.bpReadings.map(r => ({ systolic: r.systolic, diastolic: r.diastolic, pulse: r.pulse ?? undefined, timestamp: r.recordedAt })),
+      };
+    });
+
+  const result = [...fromFlatFile, ...fromSupabase];
+
   return NextResponse.json({ patients: result, updatedAt: new Date().toISOString() });
 }
+
 
 function getBpAlertStatus(systolic?: number, diastolic?: number): string {
   if (!systolic || !diastolic) return 'normal';

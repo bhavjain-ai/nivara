@@ -31,12 +31,25 @@ final class PatientViewModel: ObservableObject {
 
         bleManager.onBPReading = { [weak self] parsed in
             guard let self else { return }
+            let date = parsed.timestamp ?? Date()
             self.vitals.addBPReading(
                 systolic: parsed.systolic,
                 diastolic: parsed.diastolic,
                 pulse: parsed.pulseRate,
-                date: parsed.timestamp ?? Date()
+                date: date
             )
+            // Fire-and-forget, after the local save — see
+            // SupabaseService.pushBPReading's doc comment for why this
+            // never blocks or fails visibly.
+            Task {
+                await SupabaseService.pushBPReading(
+                    systolic: parsed.systolic,
+                    diastolic: parsed.diastolic,
+                    pulse: parsed.pulseRate,
+                    date: date,
+                    source: .bleDevice
+                )
+            }
             self.showToast("Reading saved — \(parsed.systolic)/\(parsed.diastolic) mmHg")
             if let target = self.profile.bpTarget {
                 let status = ClinicalGuidelines.analyzeBP(systolic: parsed.systolic, diastolic: parsed.diastolic, target: target)
@@ -46,11 +59,20 @@ final class PatientViewModel: ObservableObject {
 
         bleManager.onGlucoseReading = { [weak self] parsed in
             guard let self, let mgDl = parsed.glucoseMgDl else { return }
+            let date = parsed.timestamp ?? Date()
             self.vitals.addGlucoseReading(
                 mgDl: mgDl,
                 sampleType: parsed.sampleType,
-                date: parsed.timestamp ?? Date()
+                date: date
             )
+            Task {
+                await SupabaseService.pushGlucoseReading(
+                    mgDl: mgDl,
+                    sampleType: parsed.sampleType,
+                    date: date,
+                    source: .bleDevice
+                )
+            }
             self.showToast("Reading saved — \(mgDl) mg/dL")
             self.pendingMealTimingConfirmation = self.vitals.latestGlucose
             if let tier = self.profile.hba1cTier {
