@@ -21,6 +21,13 @@ const VALID_ROLES = ['Physician', 'Dietician', 'Coach'] as const;
  * checked here via the request's session) before this is exposed publicly.
  */
 export async function POST(request: NextRequest) {
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: 'Supabase is not configured on this server — copy .env.local.example to .env.local and fill in your project values.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { patient_id, coordinator_role, sender_name, message_body } = body;

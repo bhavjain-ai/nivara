@@ -104,6 +104,62 @@ enum SupabaseService {
             .value
         return rows.first?.id
     }
+
+    /// Pushes a BP reading to Supabase, best-effort — same philosophy as
+    /// `registerPatient`: VitalsStore's local save (what the UI and
+    /// freshness logic actually depend on) already happened before this is
+    /// ever called, so a failure here (not configured, not yet registered,
+    /// network error) is logged and swallowed, never surfaced to the
+    /// patient. Called from PatientViewModel right after a fresh BLE
+    /// reading is saved locally — see onBPReading.
+    static func pushBPReading(systolic: Int, diastolic: Int, pulse: Int?, date: Date, source: ReadingSource) async {
+        guard client != nil else { return }
+        do {
+            guard let patientId = try await fetchMyPatientId() else { return }
+            let reading = NewBPReading(
+                patientId: patientId,
+                systolic: systolic,
+                diastolic: diastolic,
+                pulse: pulse,
+                source: source.supabaseValue,
+                recordedAt: ISO8601DateFormatter().string(from: date)
+            )
+            try await client?
+                .from("bp_readings")
+                .insert(reading)
+                .execute()
+        } catch {
+            print("SupabaseService.pushBPReading failed (continuing locally): \(error)")
+        }
+    }
+
+    /// Pushes a glucose reading to Supabase, best-effort — see
+    /// `pushBPReading`'s doc comment for the failure philosophy. Called
+    /// from PatientViewModel right after a fresh BLE reading is saved
+    /// locally — see onGlucoseReading. Note: a later retag (fasting vs.
+    /// post-meal, via VitalsStore.retagLatestGlucose) is NOT currently
+    /// re-synced to Supabase — the row pushed here keeps whatever
+    /// sampleType was true at push time. Acceptable gap for now; worth
+    /// revisiting if retagging turns out to be common.
+    static func pushGlucoseReading(mgDl: Int, sampleType: GlucoseSampleType, date: Date, source: ReadingSource) async {
+        guard client != nil else { return }
+        do {
+            guard let patientId = try await fetchMyPatientId() else { return }
+            let reading = NewGlucoseReading(
+                patientId: patientId,
+                mgDl: mgDl,
+                sampleType: sampleType.rawValue,
+                source: source.supabaseValue,
+                recordedAt: ISO8601DateFormatter().string(from: date)
+            )
+            try await client?
+                .from("glucose_readings")
+                .insert(reading)
+                .execute()
+        } catch {
+            print("SupabaseService.pushGlucoseReading failed (continuing locally): \(error)")
+        }
+    }
 }
 
 enum SupabaseServiceError: Error {
