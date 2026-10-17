@@ -195,6 +195,7 @@ export interface Patient {
   name: string;
   age: number;
   gender: 'Male' | 'Female';
+  clinicName: string; // which clinic's demo roster this mock patient appears in — see src/lib/mock-data.ts
   conditions: Condition[];
   comorbidities: Comorbidity[];
   city: string;

@@ -11,6 +11,7 @@ import { MedicationPanel } from '@/components/patient/MedicationPanel';
 import { CoachingPanel } from '@/components/patient/CoachingPanel';
 import { Badge } from '@/components/ui/Badge';
 import { getPatientById } from '@/lib/mock-data';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
 import { AlertStatus, Condition, Patient, VitalReading } from '@/types';
 import { MapPin, Phone, Calendar, User, ArrowLeft, Wifi } from 'lucide-react';
 import Link from 'next/link';
@@ -32,7 +33,10 @@ function statusLabel(s: AlertStatus): string {
 
 export default function PatientDetailPage({ params }: PageProps) {
   const { id } = params;
-  const basePatient = getPatientById(id);
+  const staff = useCurrentStaff();
+  // Clinic-scoped on purpose: a staff member can't view another clinic's
+  // mock patient just by guessing a /dashboard/patient/P00X URL.
+  const basePatient = getPatientById(id, staff.isSuperAdmin ? null : staff.clinicName);
   const [patient, setPatient] = useState<Patient | null>(basePatient ?? null);
   const [hasLiveData, setHasLiveData] = useState(false);
 
@@ -74,6 +78,7 @@ export default function PatientDetailPage({ params }: PageProps) {
             name: liveRecord.name,
             age: liveRecord.age ?? 0,
             gender: 'Male',
+            clinicName: staff.clinicName ?? 'All Clinics',
             conditions,
             comorbidities: [],
             city: liveRecord.city ?? '—',

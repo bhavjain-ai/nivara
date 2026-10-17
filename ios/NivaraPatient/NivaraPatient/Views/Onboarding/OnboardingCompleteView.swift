@@ -56,7 +56,11 @@ struct OnboardingCompleteView: View {
                     // because there's no network right now or because no
                     // Supabase project has been configured at all yet.
                     Task {
-                        await SupabaseService.registerPatient(onboarding: onboarding, demoProfile: viewModel.profile)
+                        await SupabaseService.registerPatient(
+                            onboarding: onboarding,
+                            demoProfile: viewModel.profile,
+                            clinicId: onboarding.selectedClinicId
+                        )
                     }
                     onDone()
                 }

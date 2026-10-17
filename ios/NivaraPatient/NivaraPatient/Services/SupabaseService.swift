@@ -38,6 +38,25 @@ enum SupabaseService {
         return session.user.id
     }
 
+    /// Lists every clinic for the onboarding clinic picker (see
+    /// OnboardingBasicInfoView). `clinics` is readable by any authenticated
+    /// session, patient or staff (see
+    /// supabase/migrations/0003_clinics_and_staff.sql) — this still calls
+    /// `ensureSignedIn()` first since the anonymous session has to exist
+    /// before any Data API call succeeds. Returns [] on any failure
+    /// (not configured, no network, etc.) so the picker can just hide
+    /// itself rather than block onboarding.
+    static func fetchClinics() async -> [Clinic] {
+        guard let client else { return [] }
+        do {
+            _ = try await ensureSignedIn()
+            return try await client.from("clinics").select("id, name").order("name").execute().value
+        } catch {
+            print("SupabaseService.fetchClinics failed (continuing without clinic list): \(error)")
+            return []
+        }
+    }
+
     /// Registers (or re-links) this device's patient row. Called once,
     /// right after onboarding's consent step completes — see
     /// OnboardingCompleteView. Safe to call more than once: a repeat
@@ -48,8 +67,12 @@ enum SupabaseService {
     /// `demoProfile` supplies the clinical fields (physician, targets,
     /// coaching tier) this pilot build still sources from the bundled demo
     /// data rather than real physician-entered enrollment — see the
-    /// scope note in the README.
-    static func registerPatient(onboarding: OnboardingStore, demoProfile: PatientProfile) async {
+    /// scope note in the README. `clinicId` is nil if the picker in
+    /// onboarding found no clinics (or wasn't reached) — the patient row
+    /// then has clinic_id = null until a clinic staff member backfills it
+    /// (see SUPABASE_SETUP.md), same as patients registered before clinics
+    /// existed at all.
+    static func registerPatient(onboarding: OnboardingStore, demoProfile: PatientProfile, clinicId: UUID?) async {
         guard let client else { return }
         do {
             let userId = try await ensureSignedIn()
@@ -57,6 +80,7 @@ enum SupabaseService {
 
             let registration = PatientRegistration(
                 authUserId: userId,
+                clinicId: clinicId,
                 deviceIdentifier: DeviceIdentity.current,
                 firstName: onboarding.firstName,
                 lastName: onboarding.lastName,

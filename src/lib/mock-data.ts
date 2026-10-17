@@ -45,6 +45,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Rajesh Kumar',
     age: 67,
     gender: 'Male',
+    clinicName: 'Dr. Heart',
     conditions: ['Hypertension'],
     comorbidities: ['Established CVD'],
     city: 'Mumbai',
@@ -95,6 +96,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Priya Sharma',
     age: 52,
     gender: 'Female',
+    clinicName: 'Dr. Heart',
     conditions: ['Hypertension'],
     comorbidities: [],
     city: 'Delhi',
@@ -143,6 +145,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Anand Patel',
     age: 61,
     gender: 'Male',
+    clinicName: 'Dr. Heart',
     conditions: ['Hypertension'],
     comorbidities: [],
     city: 'Ahmedabad',
@@ -180,6 +183,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Kavitha Reddy',
     age: 48,
     gender: 'Female',
+    clinicName: 'Dr. Heart',
     conditions: ['Hypertension'],
     comorbidities: [],
     city: 'Bangalore',
@@ -217,6 +221,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Mohammed Farooq',
     age: 55,
     gender: 'Male',
+    clinicName: 'Bangalore Diabetes Center',
     conditions: ['Diabetes'],
     comorbidities: ['Cost-Sensitive'],
     city: 'Hyderabad',
@@ -269,6 +274,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Saranya Krishnan',
     age: 49,
     gender: 'Female',
+    clinicName: 'Bangalore Diabetes Center',
     conditions: ['Diabetes'],
     comorbidities: [],
     city: 'Chennai',
@@ -307,6 +313,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Ramesh Gupta',
     age: 63,
     gender: 'Male',
+    clinicName: 'Bangalore Diabetes Center',
     conditions: ['Diabetes'],
     comorbidities: ['Higher Hypoglycemia Risk'],
     city: 'Delhi',
@@ -350,6 +357,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Lakshmi Venkataraman',
     age: 70,
     gender: 'Female',
+    clinicName: 'Dr. Heart',
     conditions: ['Hypertension', 'Diabetes'],
     comorbidities: ['Established CVD', 'CKD', 'Elderly'],
     city: 'Bangalore',
@@ -408,6 +416,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Narayan Bose',
     age: 65,
     gender: 'Male',
+    clinicName: 'Bangalore Diabetes Center',
     conditions: ['Hypertension', 'Diabetes'],
     comorbidities: ['Elderly', 'DKD'],
     city: 'Kolkata',
@@ -466,6 +475,7 @@ const rawPatients: Omit<Patient, 'alertStatus'>[] = [
     name: 'Deepa Nambiar',
     age: 57,
     gender: 'Female',
+    clinicName: 'Bangalore Diabetes Center',
     conditions: ['Hypertension', 'Diabetes'],
     comorbidities: [],
     city: 'Kochi',
@@ -551,12 +561,20 @@ export const mockPatients: Patient[] = rawPatients.map((p) => ({
   alertStatus: getPatientAlertLevel(p as Patient),
 }));
 
-export function getPatientById(id: string): Patient | undefined {
-  return mockPatients.find((p) => p.id === id);
+// clinicName = null means "super-admin, no clinic filter" — every other
+// caller must pass their own staff.clinicName so one clinic can never see
+// another's patients. See supabase/migrations/0003_clinics_and_staff.sql
+// for the real-patient equivalent (enforced by RLS, not app code).
+export function getPatientById(id: string, clinicName: string | null): Patient | undefined {
+  const p = mockPatients.find((p) => p.id === id);
+  if (!p) return undefined;
+  if (clinicName !== null && p.clinicName !== clinicName) return undefined;
+  return p;
 }
 
-export function getPatientSummaries(condition?: string) {
+export function getPatientSummaries(clinicName: string | null, condition?: string) {
   return mockPatients
+    .filter((p) => clinicName === null || p.clinicName === clinicName)
     .filter((p) => !condition || condition === 'All' || p.conditions.includes(condition as Patient['conditions'][number]))
     .map((p) => {
       const latestVitals = getLatestVitalsSummary(p);
@@ -576,29 +594,32 @@ export function getPatientSummaries(condition?: string) {
     });
 }
 
-export function getDashboardStats() {
-  const total = mockPatients.length;
-  const critical = mockPatients.filter((p) => p.alertStatus === 'critical').length;
-  const warning = mockPatients.filter((p) => p.alertStatus === 'warning').length;
-  const stable = mockPatients.filter(
+export function getDashboardStats(clinicName: string | null) {
+  const patients = mockPatients.filter((p) => clinicName === null || p.clinicName === clinicName);
+  const total = patients.length;
+  const critical = patients.filter((p) => p.alertStatus === 'critical').length;
+  const warning = patients.filter((p) => p.alertStatus === 'warning').length;
+  const stable = patients.filter(
     (p) => p.alertStatus === 'stable' || p.alertStatus === 'normal'
   ).length;
-  const activeAlerts = mockPatients.flatMap((p) => p.alerts).filter((a) => !a.acknowledged).length;
-  const outreachThisProgram = mockPatients.reduce((sum, p) => sum + p.coachingCallsCompleted, 0);
+  const activeAlerts = patients.flatMap((p) => p.alerts).filter((a) => !a.acknowledged).length;
+  const outreachThisProgram = patients.reduce((sum, p) => sum + p.coachingCallsCompleted, 0);
 
   return { total, critical, warning, stable, activeAlerts, outreachThisProgram };
 }
 
-export function getRecentAlerts() {
+export function getRecentAlerts(clinicName: string | null) {
   return mockPatients
+    .filter((p) => clinicName === null || p.clinicName === clinicName)
     .flatMap((p) => p.alerts)
     .filter((a) => !a.acknowledged)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 10);
 }
 
-export function getAllAlerts() {
+export function getAllAlerts(clinicName: string | null) {
   return mockPatients
+    .filter((p) => clinicName === null || p.clinicName === clinicName)
     .flatMap((p) => p.alerts)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }

@@ -7,11 +7,13 @@ import { PatientTable } from '@/components/dashboard/PatientTable';
 import { ConditionTabs } from '@/components/dashboard/ConditionTabs';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { usePatientRoster, ConditionFilter } from '@/lib/live-patients';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
 import { Users, Wifi } from 'lucide-react';
 
 export default function PatientsPage() {
   const [conditionFilter, setConditionFilter] = useState<ConditionFilter>('All');
   const [search, setSearch] = useState('');
+  const staff = useCurrentStaff();
   const { allPatients, counts, lastLiveFetch, livePatients } = usePatientRoster(conditionFilter);
 
   const filteredPatients = allPatients.filter((p) => {
@@ -26,7 +28,7 @@ export default function PatientsPage() {
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
         <Header
           title="Patients"
-          subtitle="Full patient directory — Nivara Health, India Pilot"
+          subtitle={`Full patient directory — ${staff.isSuperAdmin ? 'All Clinics' : staff.clinicName}`}
         />
         <main className="flex-1 p-6 space-y-6">
           {livePatients.length > 0 && (

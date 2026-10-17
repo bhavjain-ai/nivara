@@ -8,8 +8,18 @@ import Foundation
 
 /// The payload sent once, right after onboarding's consent step, to create
 /// this device's patient row. See SupabaseService.registerPatient.
+/// A row from the `clinics` table — publicly readable (see
+/// supabase/migrations/0003_clinics_and_staff.sql), used to populate the
+/// clinic picker in onboarding before any patient auth/registration has
+/// happened.
+struct Clinic: Decodable, Identifiable, Equatable {
+    let id: UUID
+    let name: String
+}
+
 struct PatientRegistration: Encodable {
     let authUserId: UUID
+    let clinicId: UUID?
     let deviceIdentifier: String
     let firstName: String
     let lastName: String
@@ -35,6 +45,7 @@ struct PatientRegistration: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case authUserId = "auth_user_id"
+        case clinicId = "clinic_id"
         case deviceIdentifier = "device_identifier"
         case firstName = "first_name"
         case lastName = "last_name"

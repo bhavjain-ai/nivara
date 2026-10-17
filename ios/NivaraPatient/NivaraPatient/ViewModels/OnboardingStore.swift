@@ -19,6 +19,15 @@ final class OnboardingStore: ObservableObject {
     @Published var dateOfBirth: Date? {
         didSet { defaults.set(dateOfBirth, forKey: Keys.dateOfBirth) }
     }
+    /// Which clinic this patient picked during onboarding (see
+    /// OnboardingBasicInfoView's clinic picker, fed by
+    /// SupabaseService.fetchClinics). Nil if no clinic was available to pick
+    /// from, or none was selected — registerPatient then leaves
+    /// patients.clinic_id null, same as patients registered before clinics
+    /// existed.
+    @Published var selectedClinicId: UUID? {
+        didSet { defaults.set(selectedClinicId?.uuidString, forKey: Keys.selectedClinicId) }
+    }
     @Published var acceptedInformedConsent: Bool {
         didSet { defaults.set(acceptedInformedConsent, forKey: Keys.acceptedInformedConsent) }
     }
@@ -60,6 +69,7 @@ final class OnboardingStore: ObservableObject {
         static let firstName = "onboarding.firstName"
         static let lastName = "onboarding.lastName"
         static let dateOfBirth = "onboarding.dateOfBirth"
+        static let selectedClinicId = "onboarding.selectedClinicId"
         static let acceptedInformedConsent = "onboarding.acceptedInformedConsent"
         static let acceptedPrivacyConsent = "onboarding.acceptedPrivacyConsent"
         static let shareWithFamilyMember = "onboarding.shareWithFamilyMember"
@@ -74,6 +84,7 @@ final class OnboardingStore: ObservableObject {
         firstName = defaults.string(forKey: Keys.firstName) ?? ""
         lastName = defaults.string(forKey: Keys.lastName) ?? ""
         dateOfBirth = defaults.object(forKey: Keys.dateOfBirth) as? Date
+        selectedClinicId = (defaults.string(forKey: Keys.selectedClinicId)).flatMap(UUID.init)
         acceptedInformedConsent = defaults.bool(forKey: Keys.acceptedInformedConsent)
         acceptedPrivacyConsent = defaults.bool(forKey: Keys.acceptedPrivacyConsent)
         shareWithFamilyMember = defaults.bool(forKey: Keys.shareWithFamilyMember)

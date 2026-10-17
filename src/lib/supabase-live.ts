@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase-admin';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface SupabaseBPReading {
   systolic: number;
@@ -50,33 +50,35 @@ interface GlucoseReadingRow {
   recorded_at: string;
 }
 
-/// Pulls every registered patient plus their recent BP/glucose readings
-/// directly from Supabase — the real counterpart to the older flat-file
+/// Pulls every patient visible to `client` plus their recent BP/glucose
+/// readings from Supabase — the real counterpart to the older flat-file
 /// reading-store (see reading-store.ts), which nothing in the current iOS
-/// app actually posts to. Returns [] (not a thrown error) whenever
-/// Supabase isn't configured, a patient has no readings yet, or a query
-/// fails — this feeds the dashboard's existing "live" merge logic
-/// (/api/patients/live), which already treats an empty/partial result as
-/// "mock data still shows," matching the rest of this app's philosophy
-/// that a missing backend should degrade gracefully, never crash a page.
+/// app actually posts to. Returns [] (not a thrown error) whenever a query
+/// fails or a patient has no readings yet — this feeds the dashboard's
+/// existing "live" merge logic (/api/patients/live), which already treats
+/// an empty/partial result as "mock data still shows," matching the rest
+/// of this app's philosophy that a missing backend should degrade
+/// gracefully, never crash a page.
 ///
-/// Uses the service-role client deliberately: this needs to see every
-/// patient's readings in one query for the admin-facing dashboard, which
-/// is exactly what a patient's own RLS-scoped anon session can never do
-/// (by design — see supabase/migrations/0001_init.sql).
-export async function getLiveSupabasePatients(): Promise<SupabaseLivePatient[]> {
-  if (!supabaseAdmin) return [];
-
+/// Takes a session-scoped client (src/lib/supabase-server.ts), not the
+/// service-role one — Row Level Security (see
+/// supabase/migrations/0003_clinics_and_staff.sql) then does the clinic
+/// filtering for us: a clinic-scoped staff session only ever gets back
+/// patients from their own clinic, a super-admin session (staff row with
+/// clinic_id = null) gets every clinic. Passing the service-role client
+/// here instead would bypass that and leak every clinic's patients to
+/// whoever's logged in.
+export async function getLiveSupabasePatients(client: SupabaseClient): Promise<SupabaseLivePatient[]> {
   const [patientsResult, bpResult, glucoseResult] = await Promise.all([
-    supabaseAdmin
+    client
       .from('patients')
       .select('id, first_name, last_name, date_of_birth, conditions, physician_name, created_at'),
-    supabaseAdmin
+    client
       .from('bp_readings')
       .select('patient_id, systolic, diastolic, pulse, recorded_at')
       .order('recorded_at', { ascending: false })
       .limit(1000),
-    supabaseAdmin
+    client
       .from('glucose_readings')
       .select('patient_id, mg_dl, sample_type, recorded_at')
       .order('recorded_at', { ascending: false })

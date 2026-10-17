@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Condition, AlertStatus } from '@/types';
 import { getDashboardStats, getPatientSummaries, mockPatients } from '@/lib/mock-data';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
 
 export interface LiveReading {
   systolic: number;
@@ -87,17 +88,29 @@ export function useLivePatients() {
 }
 
 /// Merges mock patients with the live roster: known IDs get their rows
-/// updated in place with live vitals, unknown IDs (e.g. the real patient
+/// updated in place with live vitals, unknown IDs (e.g. a real patient
 /// registered via the iOS app) are appended as new rows. Also rolls live
 /// patients into the dashboard stats/condition counts.
+///
+/// Mock patients are filtered to the logged-in staff member's clinic here
+/// (clinicName === null for a super-admin skips the filter — see
+/// src/lib/mock-data.ts). Live (Supabase-backed) patients need no such
+/// filtering client-side: /api/patients/live already only returns rows
+/// RLS allows the current session to see, scoped by clinic server-side.
 export function usePatientRoster(conditionFilter: ConditionFilter) {
   const { livePatients, lastLiveFetch } = useLivePatients();
+  const staff = useCurrentStaff();
+  const clinicName = staff.isSuperAdmin ? null : staff.clinicName;
 
-  const baseStats = getDashboardStats();
-  const basePatients = getPatientSummaries(conditionFilter === 'All' ? undefined : conditionFilter);
+  const baseStats = getDashboardStats(clinicName);
+  const basePatients = getPatientSummaries(clinicName, conditionFilter === 'All' ? undefined : conditionFilter);
 
   const liveById = new Map(livePatients.map((p) => [p.id, p]));
+  // Collision-avoidance against ALL mock IDs, intentionally unfiltered by
+  // clinic — a live patient's ID should never collide with any mock ID
+  // regardless of which clinic either belongs to.
   const knownMockIds = new Set(mockPatients.map((p) => p.id));
+  const visibleMockPatients = mockPatients.filter((p) => clinicName === null || p.clinicName === clinicName);
 
   const mergedPatients = basePatients.map((p) => {
     const live = liveById.get(p.id);
@@ -136,12 +149,12 @@ export function usePatientRoster(conditionFilter: ConditionFilter) {
   };
 
   const counts: Record<string, number> = {
-    All: mockPatients.length + liveNewCount,
+    All: visibleMockPatients.length + liveNewCount,
     Hypertension:
-      mockPatients.filter((p) => p.conditions.includes('Hypertension')).length +
+      visibleMockPatients.filter((p) => p.conditions.includes('Hypertension')).length +
       livePatients.filter((p) => !knownMockIds.has(p.id) && p.conditions.includes('Hypertension')).length,
     Diabetes:
-      mockPatients.filter((p) => p.conditions.includes('Diabetes')).length +
+      visibleMockPatients.filter((p) => p.conditions.includes('Diabetes')).length +
       livePatients.filter((p) => !knownMockIds.has(p.id) && p.conditions.includes('Diabetes')).length,
   };
 
