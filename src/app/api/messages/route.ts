@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getCurrentStaff } from '@/lib/current-staff';
 
 const VALID_ROLES = ['Physician', 'Dietician', 'Coach'] as const;
 
 /**
  * POST /api/messages
  *
- * Inserts a care-team-authored chat message. Uses the service-role Supabase
- * client because RLS (see supabase/migrations/0001_init.sql) only lets a
- * patient's own anon session insert messages with sender_type = 'patient' —
- * a coordinator's reply has to come from a trusted server path like this one.
+ * Inserts a care-team-authored chat message, as the logged-in staff member
+ * (see supabase/migrations/0003_clinics_and_staff.sql) — sender_name comes
+ * from their session, never from the request body, so one staff member
+ * can't post pretending to be someone else.
  *
- * ⚠️ NOT YET AUTHENTICATED. There is no login system for the physician/
- * coordinator web dashboard anywhere in this repo yet (it currently runs on
- * hardcoded mock data — see src/lib/mock-data.ts). Right now, anyone who can
- * reach this route can post a message impersonating any patient's care
- * team. This is fine for local development against your own Supabase
- * project, but this route MUST be gated behind real staff authentication
- * (e.g. Supabase Auth with an email/password or SSO login for coordinators,
- * checked here via the request's session) before this is exposed publicly.
+ * Uses the service-role Supabase client for the actual insert because RLS
+ * (see supabase/migrations/0001_init.sql) only lets a patient's own anon
+ * session insert messages with sender_type = 'patient' — a coordinator's
+ * reply has to come from a trusted server path like this one. Clinic
+ * access is still checked first, via a session-scoped lookup of the target
+ * patient (RLS-filtered — see getLiveSupabasePatients's doc comment for why
+ * this is the right client to use for that), so a Dr. Heart staff member
+ * can't message a Bangalore Diabetes Center patient just by knowing their
+ * patient_id.
  */
 export async function POST(request: NextRequest) {
   if (!supabaseAdmin) {
@@ -28,13 +31,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const staff = await getCurrentStaff();
+  if (!staff) {
+    return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const { patient_id, coordinator_role, sender_name, message_body } = body;
+    const { patient_id, coordinator_role, message_body } = body;
 
-    if (!patient_id || !coordinator_role || !sender_name || !message_body) {
+    if (!patient_id || !coordinator_role || !message_body) {
       return NextResponse.json(
-        { error: 'Missing required fields: patient_id, coordinator_role, sender_name, message_body' },
+        { error: 'Missing required fields: patient_id, coordinator_role, message_body' },
         { status: 400 }
       );
     }
@@ -43,13 +51,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `coordinator_role must be one of ${VALID_ROLES.join(', ')}` }, { status: 422 });
     }
 
+    // RLS-scoped lookup, not supabaseAdmin: returns no row if this patient
+    // isn't in the logged-in staff member's clinic, which is exactly the
+    // access check we want — see supabase/migrations/0003_clinics_and_staff.sql.
+    const sessionClient = createSupabaseServerClient();
+    const { data: patientRow } = sessionClient
+      ? await sessionClient.from('patients').select('id').eq('id', patient_id).maybeSingle()
+      : { data: null };
+    if (!patientRow) {
+      return NextResponse.json({ error: 'Patient not found or not accessible.' }, { status: 404 });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('messages')
       .insert({
         patient_id,
         coordinator_role,
         sender_type: 'care_team',
-        sender_name,
+        sender_name: staff.name,
         body: message_body,
       })
       .select()

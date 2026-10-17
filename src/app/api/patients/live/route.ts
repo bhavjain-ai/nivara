@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllLivePatients, getLivePatient } from '@/lib/reading-store';
 import { getLiveSupabasePatients } from '@/lib/supabase-live';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { mockPatients } from '@/lib/mock-data';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   const liveRecords = getAllLivePatients();
-  const supabasePatients = await getLiveSupabasePatients();
+  const supabase = createSupabaseServerClient();
+  const supabasePatients = supabase ? await getLiveSupabasePatients(supabase) : [];
   const knownIds = new Set(mockPatients.map(p => p.id));
 
   const fromFlatFile = liveRecords.map(record => {

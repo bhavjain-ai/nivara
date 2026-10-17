@@ -8,9 +8,20 @@ struct OnboardingBasicInfoView: View {
     let onNext: () -> Void
     let onBack: () -> Void
 
+    // Fetched once when this screen appears (see SupabaseService.fetchClinics).
+    // Empty if Supabase isn't configured, there's no network, or there are
+    // simply no clinics yet — the picker then just doesn't show, matching
+    // this app's "never block onboarding on a backend issue" philosophy.
+    // When the list DOES load, picking one is required: silently leaving a
+    // real patient unassigned to any clinic is the thing clinic isolation
+    // (see supabase/migrations/0003_clinics_and_staff.sql) exists to avoid.
+    @State private var clinics: [Clinic] = []
+
     private var canContinue: Bool {
-        !onboarding.firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !onboarding.lastName.trimmingCharacters(in: .whitespaces).isEmpty
+        let namesValid = !onboarding.firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
+            !onboarding.lastName.trimmingCharacters(in: .whitespaces).isEmpty
+        let clinicValid = clinics.isEmpty || onboarding.selectedClinicId != nil
+        return namesValid && clinicValid
     }
 
     private var defaultDateOfBirth: Date {
@@ -47,9 +58,29 @@ struct OnboardingBasicInfoView: View {
                     .datePickerStyle(.compact)
                     .labelsHidden()
                 }
+                if !clinics.isEmpty {
+                    labeledField("Clinic") {
+                        Picker(
+                            "Clinic",
+                            selection: Binding(
+                                get: { onboarding.selectedClinicId },
+                                set: { onboarding.selectedClinicId = $0 }
+                            )
+                        ) {
+                            Text("Select a clinic").tag(UUID?.none)
+                            ForEach(clinics) { clinic in
+                                Text(clinic.name).tag(Optional(clinic.id))
+                            }
+                        }
+                        .labelsHidden()
+                    }
+                }
             }
         } footer: {
             OnboardingPrimaryButton(title: "Next", enabled: canContinue, action: onNext)
+        }
+        .task {
+            clinics = await SupabaseService.fetchClinics()
         }
     }
 

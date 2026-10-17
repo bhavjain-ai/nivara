@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell, Search } from 'lucide-react';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
 
 interface HeaderProps {
   title: string;
@@ -8,6 +9,14 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const staff = useCurrentStaff();
+  const initials = staff.name
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10">
       <div>
@@ -28,7 +37,7 @@ export function Header({ title, subtitle }: HeaderProps) {
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
         </button>
         <div className="w-8 h-8 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-xs font-semibold">
-          AD
+          {initials}
         </div>
       </div>
     </header>

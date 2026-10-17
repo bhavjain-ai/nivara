@@ -10,12 +10,14 @@ import { ConditionTabs } from '@/components/dashboard/ConditionTabs';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { getRecentAlerts } from '@/lib/mock-data';
 import { usePatientRoster, ConditionFilter } from '@/lib/live-patients';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
 import { Bell, Wifi } from 'lucide-react';
 
 export default function DashboardPage() {
   const [conditionFilter, setConditionFilter] = useState<ConditionFilter>('All');
+  const staff = useCurrentStaff();
   const { allPatients, stats, counts, lastLiveFetch, livePatients } = usePatientRoster(conditionFilter);
-  const baseAlerts = getRecentAlerts();
+  const baseAlerts = getRecentAlerts(staff.isSuperAdmin ? null : staff.clinicName);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -23,7 +25,7 @@ export default function DashboardPage() {
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
         <Header
           title="Patient Overview"
-          subtitle="Nivara Health — Chronic Disease Monitoring Pilot, India"
+          subtitle={`${staff.isSuperAdmin ? 'All Clinics' : staff.clinicName} — Nivara Health, India Pilot`}
         />
         <main className="flex-1 p-6 space-y-6">
           {/* Live sync indicator */}

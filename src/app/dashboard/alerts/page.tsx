@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { getAllAlerts } from '@/lib/mock-data';
 import { useLivePatients } from '@/lib/live-patients';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
 import { AlertStatus } from '@/types';
 import { AlertCircle, Activity, Droplets, Wifi, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -30,7 +31,8 @@ function timeAgo(iso: string): string {
 
 export default function AlertsPage() {
   const [severity, setSeverity] = useState<SeverityFilter>('All');
-  const allAlerts = getAllAlerts();
+  const staff = useCurrentStaff();
+  const allAlerts = getAllAlerts(staff.isSuperAdmin ? null : staff.clinicName);
   const { livePatients } = useLivePatients();
 
   const liveAtRisk = livePatients.filter((p) => p.alertStatus === 'critical' || p.alertStatus === 'warning');
@@ -51,7 +53,10 @@ export default function AlertsPage() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <Header title="Alerts" subtitle="Clinical alert history across all patients" />
+        <Header
+          title="Alerts"
+          subtitle={`Clinical alert history — ${staff.isSuperAdmin ? 'All Clinics' : staff.clinicName}`}
+        />
         <main className="flex-1 p-6 space-y-6">
           {/* Live patients currently out of range */}
           {liveAtRisk.length > 0 && (

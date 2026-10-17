@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/Card';
 import { mockPatients } from '@/lib/mock-data';
 import { useLivePatients } from '@/lib/live-patients';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
 import { Activity, Droplets } from 'lucide-react';
 import Link from 'next/link';
 
@@ -42,8 +43,12 @@ function classifyGlucose(mgDl: number, type: 'fasting' | 'post-meal'): { label: 
 export default function VitalsPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('All');
   const { livePatients } = useLivePatients();
+  const staff = useCurrentStaff();
+  const clinicName = staff.isSuperAdmin ? null : staff.clinicName;
 
-  const mockRows: ReadingRow[] = mockPatients.flatMap((p) =>
+  const mockRows: ReadingRow[] = mockPatients
+    .filter((p) => clinicName === null || p.clinicName === clinicName)
+    .flatMap((p) =>
     p.vitals.map((v) => ({
       patientId: p.id,
       patientName: p.name,
@@ -82,7 +87,10 @@ export default function VitalsPage() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <Header title="Vitals" subtitle="Recent readings feed — blood pressure & glucose, all patients" />
+        <Header
+          title="Vitals"
+          subtitle={`Recent readings feed — ${staff.isSuperAdmin ? 'All Clinics' : staff.clinicName}`}
+        />
         <main className="flex-1 p-6 space-y-6">
           <Card>
             <CardContent className="p-5">

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -11,6 +11,8 @@ import {
   HeartPulse,
   LogOut,
 } from 'lucide-react';
+import { useCurrentStaff } from '@/components/providers/CurrentStaffProvider';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -22,6 +24,22 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const staff = useCurrentStaff();
+
+  const initials = staff.name
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  async function handleSignOut() {
+    const supabase = createSupabaseBrowserClient();
+    await supabase?.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  }
 
   return (
     <aside className="w-64 min-h-screen bg-[#1e3a5f] flex flex-col fixed left-0 top-0 bottom-0 z-20">
@@ -59,18 +77,23 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Physician info */}
+      {/* Staff info */}
       <div className="px-4 py-4 border-t border-white/10">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-semibold text-sm">
-            AD
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-white text-sm font-medium truncate">Dr. Anita Desai</div>
-            <div className="text-blue-200 text-xs">Internal Medicine</div>
+            <div className="text-white text-sm font-medium truncate">{staff.name}</div>
+            <div className="text-blue-200 text-xs truncate">
+              {staff.isSuperAdmin ? 'All Clinics' : staff.clinicName ?? staff.role}
+            </div>
           </div>
         </div>
-        <button className="flex items-center gap-2 text-blue-200 hover:text-white text-xs transition-colors w-full">
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-2 text-blue-200 hover:text-white text-xs transition-colors w-full"
+        >
           <LogOut className="w-4 h-4" />
           Sign out
         </button>
