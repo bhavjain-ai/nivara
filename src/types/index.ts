@@ -16,6 +16,7 @@ export type Comorbidity =
   | 'BMI >= 27 with weight-related comorbidity';
 
 export interface Medication {
+  id?: string; // Supabase row id — present only for a real (live) patient's medication, absent for mock/demo data
   name: string;
   genericName: string;
   drugClass:

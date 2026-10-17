@@ -13,6 +13,22 @@ export interface SupabaseGlucoseReading {
   recordedAt: string; // ISO-8601
 }
 
+export interface SupabaseMedication {
+  id: string;
+  name: string;
+  drugClass: string;
+  dose: string;
+  frequency: string;
+  startDate: string; // yyyy-MM-dd
+}
+
+export interface SupabaseMedicationChange {
+  id: string;
+  description: string;
+  relatedCondition: string;
+  changedAt: string; // yyyy-MM-dd
+}
+
 export interface SupabaseLivePatient {
   id: string;
   name: string;
@@ -22,6 +38,8 @@ export interface SupabaseLivePatient {
   enrollmentDate: string; // ISO-8601
   bpReadings: SupabaseBPReading[]; // newest first
   glucoseReadings: SupabaseGlucoseReading[]; // newest first
+  medications: SupabaseMedication[];
+  medicationHistory: SupabaseMedicationChange[]; // newest first
   lastReadingAt: string | null; // newest of either reading type, or null if none yet
 }
 
@@ -50,6 +68,24 @@ interface GlucoseReadingRow {
   recorded_at: string;
 }
 
+interface MedicationRow {
+  id: string;
+  patient_id: string;
+  name: string;
+  drug_class: string;
+  dose: string;
+  frequency: string;
+  start_date: string;
+}
+
+interface MedicationChangeRow {
+  id: string;
+  patient_id: string;
+  description: string;
+  related_condition: string;
+  changed_at: string;
+}
+
 /// Pulls every patient visible to `client` plus their recent BP/glucose
 /// readings from Supabase — the real counterpart to the older flat-file
 /// reading-store (see reading-store.ts), which nothing in the current iOS
@@ -69,7 +105,7 @@ interface GlucoseReadingRow {
 /// here instead would bypass that and leak every clinic's patients to
 /// whoever's logged in.
 export async function getLiveSupabasePatients(client: SupabaseClient): Promise<SupabaseLivePatient[]> {
-  const [patientsResult, bpResult, glucoseResult] = await Promise.all([
+  const [patientsResult, bpResult, glucoseResult, medicationsResult, medicationChangesResult] = await Promise.all([
     client
       .from('patients')
       .select('id, first_name, last_name, date_of_birth, conditions, physician_name, created_at'),
@@ -83,6 +119,15 @@ export async function getLiveSupabasePatients(client: SupabaseClient): Promise<S
       .select('patient_id, mg_dl, sample_type, recorded_at')
       .order('recorded_at', { ascending: false })
       .limit(1000),
+    client
+      .from('medications')
+      .select('id, patient_id, name, drug_class, dose, frequency, start_date')
+      .order('start_date', { ascending: false }),
+    client
+      .from('medication_changes')
+      .select('id, patient_id, description, related_condition, changed_at')
+      .order('changed_at', { ascending: false })
+      .limit(500),
   ]);
 
   const patients = (patientsResult.data ?? []) as PatientRow[];
@@ -97,8 +142,16 @@ export async function getLiveSupabasePatients(client: SupabaseClient): Promise<S
   if (glucoseResult.error) {
     console.error('getLiveSupabasePatients: glucose_readings query failed:', glucoseResult.error);
   }
+  if (medicationsResult.error) {
+    console.error('getLiveSupabasePatients: medications query failed:', medicationsResult.error);
+  }
+  if (medicationChangesResult.error) {
+    console.error('getLiveSupabasePatients: medication_changes query failed:', medicationChangesResult.error);
+  }
   const bpRows = (bpResult.data ?? []) as BPReadingRow[];
   const glucoseRows = (glucoseResult.data ?? []) as GlucoseReadingRow[];
+  const medicationRows = (medicationsResult.data ?? []) as MedicationRow[];
+  const medicationChangeRows = (medicationChangesResult.data ?? []) as MedicationChangeRow[];
 
   console.log(
     `getLiveSupabasePatients: ${patients.length} patient(s), ${bpRows.length} bp row(s), ${glucoseRows.length} glucose row(s)`
@@ -123,6 +176,13 @@ export async function getLiveSupabasePatients(client: SupabaseClient): Promise<S
       ? latestTimestamps.sort((a, b) => b.localeCompare(a))[0]
       : null;
 
+    const medications: SupabaseMedication[] = medicationRows
+      .filter((r) => r.patient_id === p.id)
+      .map((r) => ({ id: r.id, name: r.name, drugClass: r.drug_class, dose: r.dose, frequency: r.frequency, startDate: r.start_date }));
+    const medicationHistory: SupabaseMedicationChange[] = medicationChangeRows
+      .filter((r) => r.patient_id === p.id)
+      .map((r) => ({ id: r.id, description: r.description, relatedCondition: r.related_condition, changedAt: r.changed_at }));
+
     return {
       id: p.id,
       name: `${p.first_name} ${p.last_name}`.trim(),
@@ -132,6 +192,8 @@ export async function getLiveSupabasePatients(client: SupabaseClient): Promise<S
       enrollmentDate: p.created_at,
       bpReadings,
       glucoseReadings,
+      medications,
+      medicationHistory,
       lastReadingAt,
     };
   });

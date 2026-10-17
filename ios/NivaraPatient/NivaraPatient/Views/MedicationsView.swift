@@ -10,8 +10,15 @@ struct MedicationsView: View {
 
     private var profile: PatientProfile { viewModel.profile }
 
+    // Live Supabase data (set once refreshMedications() confirms a real
+    // registration exists) takes priority over the bundled demo profile —
+    // see PatientViewModel.refreshMedications's doc comment.
+    private var currentMedications: [Medication] {
+        viewModel.liveMedications ?? profile.medications
+    }
+
     private var recentChanges: [MedicationChange] {
-        profile.medicationHistory.sorted { $0.date > $1.date }
+        (viewModel.liveMedicationHistory ?? profile.medicationHistory).sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -29,6 +36,12 @@ struct MedicationsView: View {
             .background(NivaraColor.cream)
             .navigationBarHidden(true)
         }
+        .task {
+            await viewModel.refreshMedications()
+        }
+        .refreshable {
+            await viewModel.refreshMedications()
+        }
     }
 
     private var currentMedicationsCard: some View {
@@ -37,13 +50,13 @@ struct MedicationsView: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
 
-            if profile.medications.isEmpty {
+            if currentMedications.isEmpty {
                 Text("No medications on file yet.")
                     .font(.subheadline)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
 
-            ForEach(profile.medications) { med in
+            ForEach(currentMedications) { med in
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(med.name)

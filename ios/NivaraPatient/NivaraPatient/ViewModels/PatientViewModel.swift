@@ -20,6 +20,14 @@ final class PatientViewModel: ObservableObject {
     /// post-meal, so asking right away (rather than only offering a passive
     /// correction later) gets better-quality tagging up front.
     @Published private(set) var pendingMealTimingConfirmation: GlucoseReading?
+    /// Live medications/change-history from Supabase, overriding
+    /// `profile.medications`/`medicationHistory` once a real registration
+    /// is confirmed to exist — see `refreshMedications()`. Nil (not just
+    /// empty) until that confirmation happens, so MedicationsView can tell
+    /// "not checked yet, show demo data" apart from "checked, patient
+    /// genuinely has zero medications/changes right now."
+    @Published private(set) var liveMedications: [Medication]?
+    @Published private(set) var liveMedicationHistory: [MedicationChange]?
 
     private var vitalsCancellable: AnyCancellable?
     private var bleCancellable: AnyCancellable?
@@ -185,5 +193,22 @@ final class PatientViewModel: ObservableObject {
             count += vitals.glucoseReadings.filter { $0.date >= weekAgo }.count
         }
         return count
+    }
+
+    /// Pulls current medications + change history from Supabase, called
+    /// from MedicationsView's `.task`. Only overrides `profile.medications`/
+    /// `medicationHistory` once `fetchMyPatientId()` confirms this device is
+    /// actually registered — otherwise (not configured, no network, not yet
+    /// registered) liveMedications/liveMedicationHistory stay nil and the
+    /// view keeps showing the bundled demo data, same "never block on a
+    /// backend issue" philosophy as the rest of this app's Supabase
+    /// integration.
+    @MainActor
+    func refreshMedications() async {
+        guard (try? await SupabaseService.fetchMyPatientId()) != nil else { return }
+        async let meds = SupabaseService.fetchMedications()
+        async let history = SupabaseService.fetchMedicationHistory()
+        liveMedications = await meds
+        liveMedicationHistory = await history
     }
 }
