@@ -6,6 +6,7 @@ import { getEscalationRecommendation } from '@/lib/htn-titration';
 import { getDiabetesEscalationRecommendation } from '@/lib/diabetes-titration';
 import { DIABETES_DRUG_CLASSES } from '@/lib/medication-classify';
 import { COMMON_MEDICATIONS } from '@/lib/common-medications';
+import { DRUG_DOSE_OPTIONS, UNIT_DOSED_DRUGS, FREQUENCY_OPTIONS } from '@/lib/medication-doses';
 import { AlertTriangle, ShieldAlert, Info, BookOpen, Pill, Clock, Syringe, Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 
 interface MedicationPanelProps {
@@ -93,6 +94,24 @@ function MedFormRow({
   const commonNames = COMMON_MEDICATIONS[form.drugClass] ?? [];
   const [useCustomName, setUseCustomName] = useState(() => form.name !== '' && !commonNames.includes(form.name));
 
+  const doseOptions = DRUG_DOSE_OPTIONS[form.name] ?? [];
+  const isUnitDosed = UNIT_DOSED_DRUGS.has(form.name);
+  const [useCustomDose, setUseCustomDose] = useState(() => form.dose !== '' && !doseOptions.includes(form.dose));
+  const unitDoseMatch = form.dose.match(/^(\d+(?:\.\d+)?)/);
+  const unitDoseValue = unitDoseMatch ? unitDoseMatch[1] : '';
+
+  const [useCustomFrequency, setUseCustomFrequency] = useState(
+    () => form.frequency !== '' && !FREQUENCY_OPTIONS.includes(form.frequency)
+  );
+
+  function selectName(name: string) {
+    // A new medication invalidates whatever dose was picked for the old
+    // one (different drugs' strengths don't overlap in general), so clear
+    // it rather than silently carry over a value that may not apply.
+    setUseCustomDose(false);
+    setForm({ ...form, name, dose: '' });
+  }
+
   return (
     <tr className="bg-blue-50/40">
       <td className="py-2 pr-2">
@@ -124,9 +143,9 @@ function MedFormRow({
             onChange={(e) => {
               if (e.target.value === '__other__') {
                 setUseCustomName(true);
-                setForm({ ...form, name: '' });
+                selectName('');
               } else {
-                setForm({ ...form, name: e.target.value });
+                selectName(e.target.value);
               }
             }}
             className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
@@ -151,20 +170,101 @@ function MedFormRow({
         </select>
       </td>
       <td className="py-2 pr-2">
-        <input
-          value={form.dose}
-          onChange={(e) => setForm({ ...form, dose: e.target.value })}
-          placeholder="Dose"
-          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
-        />
+        {isUnitDosed ? (
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={unitDoseValue}
+              onChange={(e) => setForm({ ...form, dose: e.target.value ? `${e.target.value} units` : '' })}
+              placeholder="Units"
+              className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+            />
+            <span className="text-xs text-gray-400 shrink-0">units</span>
+          </div>
+        ) : useCustomDose || doseOptions.length === 0 ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              value={form.dose}
+              onChange={(e) => setForm({ ...form, dose: e.target.value })}
+              placeholder="Dose"
+              className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+            />
+            {doseOptions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setUseCustomDose(false);
+                  setForm({ ...form, dose: '' });
+                }}
+                className="text-xs text-gray-400 hover:text-[#1e3a5f] underline shrink-0"
+              >
+                list
+              </button>
+            )}
+          </div>
+        ) : (
+          <select
+            value={form.dose}
+            onChange={(e) => {
+              if (e.target.value === '__other__') {
+                setUseCustomDose(true);
+                setForm({ ...form, dose: '' });
+              } else {
+                setForm({ ...form, dose: e.target.value });
+              }
+            }}
+            className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+          >
+            <option value="" disabled>Select...</option>
+            {doseOptions.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+            <option value="__other__">Other (type manually)</option>
+          </select>
+        )}
       </td>
       <td className="py-2 pr-2">
-        <input
-          value={form.frequency}
-          onChange={(e) => setForm({ ...form, frequency: e.target.value })}
-          placeholder="Frequency"
-          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
-        />
+        {useCustomFrequency ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              value={form.frequency}
+              onChange={(e) => setForm({ ...form, frequency: e.target.value })}
+              placeholder="Frequency"
+              className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setUseCustomFrequency(false);
+                setForm({ ...form, frequency: '' });
+              }}
+              className="text-xs text-gray-400 hover:text-[#1e3a5f] underline shrink-0"
+            >
+              list
+            </button>
+          </div>
+        ) : (
+          <select
+            value={form.frequency}
+            onChange={(e) => {
+              if (e.target.value === '__other__') {
+                setUseCustomFrequency(true);
+                setForm({ ...form, frequency: '' });
+              } else {
+                setForm({ ...form, frequency: e.target.value });
+              }
+            }}
+            className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+          >
+            <option value="" disabled>Select...</option>
+            {FREQUENCY_OPTIONS.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+            <option value="__other__">Other (type manually)</option>
+          </select>
+        )}
       </td>
       <td className="py-2 pr-2">
         <input
