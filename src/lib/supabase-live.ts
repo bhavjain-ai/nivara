@@ -84,10 +84,23 @@ export async function getLiveSupabasePatients(): Promise<SupabaseLivePatient[]> 
   ]);
 
   const patients = (patientsResult.data ?? []) as PatientRow[];
+  if (patientsResult.error) {
+    console.error('getLiveSupabasePatients: patients query failed:', patientsResult.error);
+  }
   if (patientsResult.error || patients.length === 0) return [];
 
+  if (bpResult.error) {
+    console.error('getLiveSupabasePatients: bp_readings query failed:', bpResult.error);
+  }
+  if (glucoseResult.error) {
+    console.error('getLiveSupabasePatients: glucose_readings query failed:', glucoseResult.error);
+  }
   const bpRows = (bpResult.data ?? []) as BPReadingRow[];
   const glucoseRows = (glucoseResult.data ?? []) as GlucoseReadingRow[];
+
+  console.log(
+    `getLiveSupabasePatients: ${patients.length} patient(s), ${bpRows.length} bp row(s), ${glucoseRows.length} glucose row(s)`
+  );
 
   return patients.map((p) => {
     const bpReadings: SupabaseBPReading[] = bpRows
