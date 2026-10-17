@@ -27,6 +27,14 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const isSupabaseAdminConfigured = Boolean(supabaseUrl && serviceRoleKey);
 
+// TEMPORARY diagnostic — remove once the live-sync bug is found. Masks the
+// key (only prints its length and last 6 chars) so nothing secret lands in
+// server logs; lets us compare against the known-good key used in manual
+// curl tests without ever printing the real value.
+console.log(
+  `[supabase-admin] url=${supabaseUrl ?? 'undefined'} keyLen=${serviceRoleKey?.length ?? 0} keyTail=${serviceRoleKey?.slice(-6) ?? 'n/a'}`
+);
+
 export const supabaseAdmin: SupabaseClient | null = isSupabaseAdminConfigured
   ? createClient(supabaseUrl!, serviceRoleKey!, {
       auth: { autoRefreshToken: false, persistSession: false },
