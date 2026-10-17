@@ -79,12 +79,12 @@ export async function GET() {
     .filter(p => !knownIds.has(p.id)) // real patient_id UUIDs never collide with mock IDs, but guard anyway
     .map(p => {
       const bpVitals = p.bpReadings.map(r => ({
-        date: r.recordedAt.split('T')[0],
+        date: r.recordedAt,
         systolic: r.systolic,
         diastolic: r.diastolic,
       }));
       const glucoseVitals = p.glucoseReadings.map(r => ({
-        date: r.recordedAt.split('T')[0],
+        date: r.recordedAt,
         glucose: r.mgDl,
         glucoseType: r.sampleType,
       }));

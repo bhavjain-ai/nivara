@@ -222,7 +222,7 @@ export default function PatientDetailPage({ params }: PageProps) {
                           : { label: 'Normal', color: 'text-green-700 bg-green-50' };
                         return (
                           <tr key={i} className="hover:bg-gray-50">
-                            <td className="px-4 py-2.5 text-gray-600 text-xs">{new Date(v.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                            <td className="px-4 py-2.5 text-gray-600 text-xs">{new Date(v.date).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                             <td className="px-4 py-2.5 font-semibold text-gray-900">{sys} mmHg</td>
                             <td className="px-4 py-2.5 font-semibold text-gray-900">{dia} mmHg</td>
                             <td className="px-4 py-2.5">
