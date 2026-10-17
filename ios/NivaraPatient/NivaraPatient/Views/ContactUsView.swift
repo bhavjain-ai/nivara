@@ -25,8 +25,7 @@ struct ContactUsView: View {
                         icon: "stethoscope",
                         title: onboarding.t("contact_your_physician"),
                         name: profile.physicianName,
-                        subtitle: onboarding.t("contact_primary_care_physician"),
-                        phone: profile.physicianPhone
+                        subtitle: onboarding.t("contact_primary_care_physician")
                     )
 
                     if let coordinator = mostRecentCoordinator {
@@ -34,8 +33,7 @@ struct ContactUsView: View {
                             icon: "heart.text.square.fill",
                             title: onboarding.t("contact_your_care_coordinator"),
                             name: coordinator.coordinatorName,
-                            subtitle: coordinator.coordinatorRole.displayName(for: onboarding.selectedLanguage),
-                            phone: nil
+                            subtitle: coordinator.coordinatorRole.displayName(for: onboarding.selectedLanguage)
                         )
                     }
 
@@ -43,10 +41,7 @@ struct ContactUsView: View {
                         icon: "questionmark.circle.fill",
                         title: onboarding.t("contact_nivara_support"),
                         name: onboarding.t("contact_support_team_name"),
-                        subtitle: onboarding.t("contact_support_hours"),
-                        phone: "+91-80000-00000",
-                        email: "support@nivarahealth.com",
-                        whatsapp: "+91-80000-00000"
+                        subtitle: onboarding.t("contact_support_hours")
                     )
 
                     emergencyNotice
@@ -61,7 +56,11 @@ struct ContactUsView: View {
         }
     }
 
-    private func contactCard(icon: String, title: String, name: String, subtitle: String, phone: String?, email: String? = nil, whatsapp: String? = nil) -> some View {
+    /// Deliberately informational only — no call/email/WhatsApp actions.
+    /// Reaching the care team happens through the in-app Care Team chat
+    /// (CareTeamConversationView); a doctor who needs to call a patient
+    /// does so outbound via WhatsApp on their own, not triggered from here.
+    private func contactCard(icon: String, title: String, name: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon)
                 .font(.caption.weight(.semibold))
@@ -73,45 +72,8 @@ struct ContactUsView: View {
             Text(subtitle)
                 .font(.caption)
                 .foregroundStyle(NivaraColor.textSecondary)
-
-            HStack(spacing: 10) {
-                if let phone, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
-                    Link(destination: url) {
-                        contactButton(icon: "phone.fill", label: onboarding.t("contact_call"))
-                    }
-                }
-                if let email, let url = URL(string: "mailto:\(email)") {
-                    Link(destination: url) {
-                        contactButton(icon: "envelope.fill", label: onboarding.t("contact_email"))
-                    }
-                }
-                // wa.me deep links into the WhatsApp app if installed, or a
-                // web fallback otherwise — this leaves the app for WhatsApp
-                // (there's no way to embed WhatsApp's own chat UI inside a
-                // third-party app), same as tel:/mailto: leave it for the
-                // Phone/Mail apps above.
-                if let whatsapp, let url = URL(string: "https://wa.me/\(whatsapp.filter { $0.isNumber })") {
-                    Link(destination: url) {
-                        contactButton(icon: "message.fill", label: onboarding.t("contact_whatsapp"))
-                    }
-                }
-            }
-            .padding(.top, 2)
         }
         .nivaraCard()
-    }
-
-    private func contactButton(icon: String, label: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-            Text(label)
-        }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(NivaraColor.forestGreen)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(NivaraColor.sageGreen)
-        .clipShape(Capsule())
     }
 
     /// Surfaces `DeviceIdentity.current` for support/debugging purposes —
