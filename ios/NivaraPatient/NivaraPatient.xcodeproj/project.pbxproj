@@ -47,6 +47,7 @@
 		A25FE361AA511F0DA4F47641 /* MealTimingConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986E4DD107F6B7DDEC0ED04D /* MealTimingConfirmationView.swift */; };
 		A4C51AF9B18157063DCAA7AA /* GATTDataHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DA1C5F12E254975D532212 /* GATTDataHelpers.swift */; };
 		A8E1F37D4145A0F6EDCA5C19 /* NivaraTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B1BA619133BF1493C70FD5 /* NivaraTheme.swift */; };
+		AAD61BAF5563738F6697F39E /* OnboardingLanguageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D146D06EE15E2A896CFBA9 /* OnboardingLanguageView.swift */; };
 		AAD88F89B8ACFEF1CDBF32BD /* AppTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD59B6077C92E685F7F6C5B2 /* AppTab.swift */; };
 		ABE150C4E59F392978D15D96 /* CareTeamConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC388BF74FF7DA2E5F951AC1 /* CareTeamConversationView.swift */; };
 		ACBCDC29BC2AB099ABDBBA26 /* SupabaseConfig.swift.example in Resources */ = {isa = PBXBuildFile; fileRef = 17190EE4EBB35EB624AF2FCF /* SupabaseConfig.swift.example */; };
@@ -54,7 +55,6 @@
 		B02944265D632423F53CC8CA /* OnboardingScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3CC1D71ECEEEEE35A3B8DBC /* OnboardingScaffold.swift */; };
 		B9503AE738CFB3EBB363100E /* ConsentDocumentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400EE821BB2366A0509AB59F /* ConsentDocumentSheet.swift */; };
 		BA0AA22FAD238653A0E3CC71 /* BPHistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9855BAD67E64382C2FACC67 /* BPHistoryListView.swift */; };
-		CEB44C7826F72F05981190A1 /* OnboardingLanguageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79E984983A725836E6322EF /* OnboardingLanguageView.swift */; };
 		CEE1756A33603C483B4DAB66 /* OnboardingDeviceSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 595C34CC941E1D118EAAFA94 /* OnboardingDeviceSetupView.swift */; };
 		DC005B7C2B8372A71E1B0C5F /* MyHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CED95D70B839E06E608FC51 /* MyHealthView.swift */; };
 		F02E9D680DC7B5947BECEC32 /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924F92C980F1BD21BCFF4DF6 /* OnboardingFlowView.swift */; };
@@ -70,6 +70,7 @@
 		02DA1C5F12E254975D532212 /* GATTDataHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GATTDataHelpers.swift; sourceTree = "<group>"; };
 		03EC5329179FC072CBAF13D3 /* ToastBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastBanner.swift; sourceTree = "<group>"; };
 		04D7FC028A4913869094C7B9 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		09D146D06EE15E2A896CFBA9 /* OnboardingLanguageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingLanguageView.swift; sourceTree = "<group>"; };
 		17190EE4EBB35EB624AF2FCF /* SupabaseConfig.swift.example */ = {isa = PBXFileReference; path = SupabaseConfig.swift.example; sourceTree = "<group>"; };
 		2BB2C487DC501499C408BE71 /* CareTeamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareTeamView.swift; sourceTree = "<group>"; };
 		314F8F187D8DD1D347A46CCD /* OmronRecordParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmronRecordParser.swift; sourceTree = "<group>"; };
@@ -99,7 +100,6 @@
 		909EBCDC2439717F5F2490C6 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		90BB387EAF7B4D656D5A3194 /* OmronProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmronProtocol.swift; sourceTree = "<group>"; };
 		924F92C980F1BD21BCFF4DF6 /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
-		F79E984983A725836E6322EF /* OnboardingLanguageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingLanguageView.swift; sourceTree = "<group>"; };
 		948E4CF48503A9B4A950E487 /* VitalsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitalsStore.swift; sourceTree = "<group>"; };
 		95FB6EE0D8726279DFF29DAD /* OnboardingCompleteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCompleteView.swift; sourceTree = "<group>"; };
 		986E4DD107F6B7DDEC0ED04D /* MealTimingConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealTimingConfirmationView.swift; sourceTree = "<group>"; };
@@ -218,7 +218,7 @@
 				7C6E90453D408795026D4212 /* OnboardingConsentView.swift */,
 				595C34CC941E1D118EAAFA94 /* OnboardingDeviceSetupView.swift */,
 				924F92C980F1BD21BCFF4DF6 /* OnboardingFlowView.swift */,
-				F79E984983A725836E6322EF /* OnboardingLanguageView.swift */,
+				09D146D06EE15E2A896CFBA9 /* OnboardingLanguageView.swift */,
 				B3CC1D71ECEEEEE35A3B8DBC /* OnboardingScaffold.swift */,
 				B0CFC2BC2BA3278B1A928A2D /* OnboardingWelcomeView.swift */,
 			);
@@ -411,7 +411,7 @@
 				0216B102EE441BEF4D3BCC3D /* OnboardingConsentView.swift in Sources */,
 				CEE1756A33603C483B4DAB66 /* OnboardingDeviceSetupView.swift in Sources */,
 				F02E9D680DC7B5947BECEC32 /* OnboardingFlowView.swift in Sources */,
-				CEB44C7826F72F05981190A1 /* OnboardingLanguageView.swift in Sources */,
+				AAD61BAF5563738F6697F39E /* OnboardingLanguageView.swift in Sources */,
 				B02944265D632423F53CC8CA /* OnboardingScaffold.swift in Sources */,
 				6868FCB2173D4A8383034C08 /* OnboardingStore.swift in Sources */,
 				8F119B5B42ED876912999E2F /* OnboardingWelcomeView.swift in Sources */,
@@ -442,6 +442,7 @@
 				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Nivara;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -467,6 +468,7 @@
 				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Nivara;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
