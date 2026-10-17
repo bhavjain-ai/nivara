@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getCurrentStaff } from '@/lib/current-staff';
 import { conditionForDrugClass } from '@/lib/medication-classify';
+import { verifyClinicAccess } from '@/lib/verify-clinic-access';
 
 export const dynamic = 'force-dynamic';
-
-async function verifyClinicAccess(patientId: string): Promise<boolean> {
-  const sessionClient = createSupabaseServerClient();
-  if (!sessionClient) return false;
-  const { data } = await sessionClient.from('patients').select('id').eq('id', patientId).maybeSingle();
-  return Boolean(data);
-}
 
 /**
  * PATCH /api/patients/[id]/medications/[medicationId]

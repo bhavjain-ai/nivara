@@ -8,6 +8,7 @@ import { VitalsChart } from '@/components/patient/VitalsChart';
 import { AIInsights } from '@/components/patient/AIInsights';
 import { AlertHistory } from '@/components/patient/AlertHistory';
 import { MedicationPanel } from '@/components/patient/MedicationPanel';
+import { MessagePanel } from '@/components/patient/MessagePanel';
 import { CoachingPanel } from '@/components/patient/CoachingPanel';
 import { Badge } from '@/components/ui/Badge';
 import { getPatientById } from '@/lib/mock-data';
@@ -266,6 +267,14 @@ export default function PatientDetailPage({ params }: PageProps) {
             </h2>
             <VitalsChart patient={patient} />
           </section>
+
+          {/* Care Team Chat — only for real (Supabase-backed) patients; mock
+              patients have no real messages table rows to read. */}
+          {hasLiveData && (
+            <section>
+              <MessagePanel patientId={patient.id} />
+            </section>
+          )}
 
           {/* Care Coordinator Outreach */}
           <section>
