@@ -20,10 +20,10 @@ struct HomeView: View {
     /// glucose.
     private var takeMeasurementSubtitle: String {
         switch (profile.conditions.contains(.hypertension), profile.conditions.contains(.diabetes)) {
-        case (true, true): return "Connect your BP cuff or glucose meter to check in."
-        case (true, false): return "Connect your BP cuff to check in."
-        case (false, true): return "Connect your glucose meter to check in."
-        case (false, false): return "Connect a device to check in."
+        case (true, true): return onboarding.t("home_take_measurement_subtitle_both")
+        case (true, false): return onboarding.t("home_take_measurement_subtitle_bp")
+        case (false, true): return onboarding.t("home_take_measurement_subtitle_glucose")
+        case (false, false): return onboarding.t("home_take_measurement_subtitle_generic")
         }
     }
 
@@ -37,7 +37,7 @@ struct HomeView: View {
     /// initiated attempt shows its real outcome.
     private var autoSyncStatusText: String? {
         switch viewModel.bleManager.state {
-        case .connecting: return "Connecting to your device…"
+        case .connecting: return onboarding.t("home_connecting_to_device")
         case .readingOmronHistory(let message): return message
         default: return nil
         }
@@ -48,7 +48,7 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("\(NivaraDate.greeting()), \(firstName)")
+                        Text("\(NivaraDate.greeting(language: onboarding.selectedLanguage)), \(firstName)")
                             .font(.system(size: 26, weight: .bold, design: .rounded))
                             .foregroundStyle(NivaraColor.textPrimary)
                         Text(Date(), style: .date)
@@ -126,10 +126,10 @@ struct HomeView: View {
             Image(systemName: "bell.badge.fill")
                 .foregroundStyle(NivaraColor.warning)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Haven't seen a reading in \(days) days")
+                Text(onboarding.t("home_lapse_nudge_title", days))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NivaraColor.textPrimary)
-                Text("Everything OK? Connect your device when you get a chance.")
+                Text(onboarding.t("home_lapse_nudge_subtitle"))
                     .font(.caption)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -150,7 +150,7 @@ struct HomeView: View {
                 .font(.title3)
                 .foregroundStyle(NivaraColor.forestGreen)
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(count) reading\(count == 1 ? "" : "s") this week")
+                Text(onboarding.t(count == 1 ? "home_readings_this_week_one" : "home_readings_this_week_other", count))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NivaraColor.textPrimary)
                 Text(consistencyMessage(for: count))
@@ -164,9 +164,9 @@ struct HomeView: View {
 
     private func consistencyMessage(for count: Int) -> String {
         switch count {
-        case 0: return "Let's get your first reading in this week."
-        case 1...2: return "Good start — keep it going."
-        default: return "Right on track with your testing routine."
+        case 0: return onboarding.t("home_consistency_zero")
+        case 1...2: return onboarding.t("home_consistency_some")
+        default: return onboarding.t("home_consistency_good")
         }
     }
 
@@ -178,10 +178,10 @@ struct HomeView: View {
                     .font(.title)
                     .foregroundStyle(NivaraColor.forestGreen)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Thank you for taking your measurement today")
+                    Text(onboarding.t("home_measurement_done_title"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
-                    Text("Your care team can see your latest reading.")
+                    Text(onboarding.t("home_measurement_done_subtitle"))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                 }
@@ -195,7 +195,7 @@ struct HomeView: View {
                         .font(.title)
                         .foregroundStyle(NivaraColor.warning)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("You haven't taken a measurement yet today")
+                        Text(onboarding.t("home_measurement_pending_title"))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(NivaraColor.textPrimary)
                         Text(takeMeasurementSubtitle)
@@ -208,7 +208,7 @@ struct HomeView: View {
                 NavigationLink {
                     DeviceConnectionView()
                 } label: {
-                    Text("Take a Measurement")
+                    Text(onboarding.t("home_take_measurement_button"))
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
@@ -231,10 +231,10 @@ struct HomeView: View {
                     .font(.title3)
                     .foregroundStyle(NivaraColor.forestGreen)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Review your recent measurements")
+                    Text(onboarding.t("home_review_trends_title"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
-                    Text("See your latest readings and trends")
+                    Text(onboarding.t("home_review_trends_subtitle"))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                 }
@@ -254,7 +254,7 @@ struct HomeView: View {
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Label("Your goal", systemImage: "target")
+                    Label(onboarding.t("home_your_goal"), systemImage: "target")
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()

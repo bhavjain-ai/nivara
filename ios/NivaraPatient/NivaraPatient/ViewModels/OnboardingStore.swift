@@ -10,6 +10,12 @@ final class OnboardingStore: ObservableObject {
     @Published var isComplete: Bool {
         didSet { defaults.set(isComplete, forKey: Keys.isComplete) }
     }
+    /// Picked on the very first onboarding screen (OnboardingLanguageView)
+    /// and used by `t(_:)`/`t(_:_:)` below for every translated string in
+    /// the app — see Translations.swift.
+    @Published var selectedLanguage: AppLanguage {
+        didSet { defaults.set(selectedLanguage.rawValue, forKey: Keys.selectedLanguage) }
+    }
     @Published var firstName: String {
         didSet { defaults.set(firstName, forKey: Keys.firstName) }
     }
@@ -66,6 +72,7 @@ final class OnboardingStore: ObservableObject {
 
     private enum Keys {
         static let isComplete = "onboarding.isComplete"
+        static let selectedLanguage = "onboarding.selectedLanguage"
         static let firstName = "onboarding.firstName"
         static let lastName = "onboarding.lastName"
         static let dateOfBirth = "onboarding.dateOfBirth"
@@ -81,6 +88,7 @@ final class OnboardingStore: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isComplete = defaults.bool(forKey: Keys.isComplete)
+        selectedLanguage = (defaults.string(forKey: Keys.selectedLanguage)).flatMap(AppLanguage.init) ?? .english
         firstName = defaults.string(forKey: Keys.firstName) ?? ""
         lastName = defaults.string(forKey: Keys.lastName) ?? ""
         dateOfBirth = defaults.object(forKey: Keys.dateOfBirth) as? Date
@@ -95,5 +103,24 @@ final class OnboardingStore: ObservableObject {
 
     func markComplete() {
         isComplete = true
+    }
+
+    /// Looks up `key` in Translations.swift for `selectedLanguage`, falling
+    /// back to English, then to the key itself if even English is missing
+    /// (so a typo'd/not-yet-translated key fails visibly instead of
+    /// crashing — easy to spot in testing, never a runtime crash for a
+    /// patient).
+    func t(_ key: String) -> String {
+        Translations.table[key]?[selectedLanguage] ?? Translations.table[key]?[.english] ?? key
+    }
+
+    /// Same lookup, for a template string containing %@ placeholders (e.g.
+    /// "%@ · %@" for "dose · frequency") — use this instead of raw Swift
+    /// string interpolation so formatting stays predictable across
+    /// languages without relying on SwiftUI's own (unverifiable without a
+    /// compiler) interpolated-LocalizedStringKey matching.
+    func t(_ key: String, _ args: CVarArg...) -> String {
+        let template = Translations.table[key]?[selectedLanguage] ?? Translations.table[key]?[.english] ?? key
+        return String(format: template, arguments: args)
     }
 }

@@ -24,8 +24,8 @@ struct OnboardingConsentView: View {
 
     var body: some View {
         OnboardingScaffold(
-            title: "Your consent",
-            subtitle: "Please review and accept both before we set up your device.",
+            title: onboarding.t("consent_title"),
+            subtitle: onboarding.t("consent_subtitle"),
             step: 2,
             totalSteps: 3,
             onBack: onBack
@@ -48,7 +48,7 @@ struct OnboardingConsentView: View {
                 familyAccessCard
             }
         } footer: {
-            OnboardingPrimaryButton(title: "I Agree — Next", enabled: onboarding.canProceedPastConsent, action: onNext)
+            OnboardingPrimaryButton(title: onboarding.t("consent_agree_next"), enabled: onboarding.canProceedPastConsent, action: onNext)
         }
         .onAppear {
             // Force a fresh read-and-accept every time this screen is
@@ -85,7 +85,7 @@ struct OnboardingConsentView: View {
                 .font(.caption)
                 .foregroundStyle(NivaraColor.textSecondary)
             Button(action: showFullText) {
-                Text("Read full consent")
+                Text(onboarding.t("consent_read_full"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NivaraColor.forestGreen)
             }
@@ -94,13 +94,13 @@ struct OnboardingConsentView: View {
             HStack(spacing: 6) {
                 Image(systemName: hasRead ? "checkmark.circle.fill" : "arrow.down.circle")
                     .foregroundStyle(hasRead ? NivaraColor.forestGreen : NivaraColor.textSecondary)
-                Text(hasRead ? "Reviewed — you can agree below" : "Scroll to the end of the full consent to continue")
+                Text(hasRead ? onboarding.t("consent_reviewed") : onboarding.t("consent_scroll_prompt"))
                     .font(.caption2)
                     .foregroundStyle(hasRead ? NivaraColor.forestGreen : NivaraColor.textSecondary)
             }
 
             Toggle(isOn: isAccepted) {
-                Text("I have read and agree to this consent")
+                Text(onboarding.t("consent_i_agree"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(hasRead ? NivaraColor.textPrimary : NivaraColor.textSecondary)
             }
@@ -120,10 +120,10 @@ struct OnboardingConsentView: View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: $onboarding.shareWithFamilyMember) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Share health trends with a family member")
+                    Text(onboarding.t("consent_family_share_title"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
-                    Text("Optional — you can change this anytime from Contact Us.")
+                    Text(onboarding.t("consent_family_share_subtitle"))
                         .font(.caption2)
                         .foregroundStyle(NivaraColor.textSecondary)
                 }
@@ -131,20 +131,20 @@ struct OnboardingConsentView: View {
             .tint(NivaraColor.forestGreen)
 
             if onboarding.shareWithFamilyMember {
-                TextField("Family member's name", text: $onboarding.familyMemberName)
+                TextField(onboarding.t("consent_family_name_placeholder"), text: $onboarding.familyMemberName)
                     .padding(10)
                     .background(NivaraColor.cream)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                TextField("Relationship (e.g. spouse, son)", text: $onboarding.familyMemberRelationship)
+                TextField(onboarding.t("consent_family_relationship_placeholder"), text: $onboarding.familyMemberRelationship)
                     .padding(10)
                     .background(NivaraColor.cream)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                TextField("Phone number", text: $onboarding.familyMemberPhone)
+                TextField(onboarding.t("consent_family_phone_placeholder"), text: $onboarding.familyMemberPhone)
                     .keyboardType(.phonePad)
                     .padding(10)
                     .background(NivaraColor.cream)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                Text("So your care team has a way to reach them if needed.")
+                Text(onboarding.t("consent_family_reach_note"))
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
             }

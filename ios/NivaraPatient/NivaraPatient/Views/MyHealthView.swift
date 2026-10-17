@@ -9,6 +9,7 @@ import Charts
 /// patients aren't hunting for them at the bottom of a long page.
 struct MyHealthView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     private var profile: PatientProfile { viewModel.profile }
 
@@ -31,9 +32,9 @@ struct MyHealthView: View {
         let readings = viewModel.vitals.hba1cReadings
         guard readings.count > 1 else { return nil }
         let delta = readings[readings.count - 1].value - readings[readings.count - 2].value
-        if abs(delta) < 0.05 { return ("Unchanged since your last A1C", NivaraColor.textSecondary) }
+        if abs(delta) < 0.05 { return (onboarding.t("health_a1c_unchanged"), NivaraColor.textSecondary) }
         let arrow = delta < 0 ? "↓" : "↑"
-        let text = "\(arrow) \(String(format: "%.1f", abs(delta)))% since your last A1C"
+        let text = "\(arrow) " + onboarding.t("health_a1c_delta", String(format: "%.1f", abs(delta)))
         return (text, delta < 0 ? NivaraColor.forestGreen : NivaraColor.warning)
     }
 
@@ -48,7 +49,7 @@ struct MyHealthView: View {
         let inRange = recent.filter {
             ClinicalGuidelines.analyzeGlucose(glucose: $0.glucoseMgDl, sampleType: $0.sampleType, targets: targets).level == .normal
         }.count
-        let text = "\(inRange) of last \(recent.count) readings in range"
+        let text = onboarding.t("health_glucose_in_range", inRange, recent.count)
         return (text, inRange == recent.count ? NivaraColor.forestGreen : NivaraColor.warning)
     }
 
@@ -67,9 +68,9 @@ struct MyHealthView: View {
         let readings = viewModel.vitals.bpReadings
         guard readings.count > 1 else { return nil }
         let delta = readings[readings.count - 1].systolic - readings[readings.count - 2].systolic
-        if abs(delta) < 2 { return ("Unchanged since your last reading", NivaraColor.textSecondary) }
+        if abs(delta) < 2 { return (onboarding.t("health_bp_unchanged"), NivaraColor.textSecondary) }
         let arrow = delta < 0 ? "↓" : "↑"
-        let text = "\(arrow) \(abs(delta)) mmHg since your last reading"
+        let text = "\(arrow) " + onboarding.t("health_bp_delta", abs(delta))
         return (text, delta < 0 ? NivaraColor.forestGreen : NivaraColor.warning)
     }
 
@@ -85,7 +86,7 @@ struct MyHealthView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     HStack {
-                        PageTitle(text: "My Health")
+                        PageTitle(text: onboarding.t("health_page_title"))
                         Spacer()
                         NavigationLink {
                             DeviceConnectionView()
@@ -117,7 +118,7 @@ struct MyHealthView: View {
 
     private var bpSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Blood Pressure", icon: "heart.fill")
+            sectionHeader(onboarding.t("health_blood_pressure"), icon: "heart.fill")
 
             if let latest = viewModel.vitals.latestBP {
                 VStack(alignment: .leading, spacing: 4) {
@@ -125,18 +126,18 @@ struct MyHealthView: View {
                         Text("\(latest.systolic)/\(latest.diastolic)")
                             .font(.system(size: 44, weight: .bold, design: .rounded))
                             .foregroundStyle(NivaraColor.textPrimary)
-                        Text("mmHg")
+                        Text(onboarding.t("health_unit_mmhg"))
                             .font(.subheadline)
                             .foregroundStyle(NivaraColor.textSecondary)
                         if let pulse = latest.pulse {
-                            PillLabel(text: "\(pulse) bpm")
+                            PillLabel(text: onboarding.t("health_bpm", pulse))
                         }
                     }
-                    Text(NivaraDate.relative(latest.date))
+                    Text(NivaraDate.relative(latest.date, language: onboarding.selectedLanguage))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     if let target = profile.bpTarget {
-                        Text("Your target: \(target.label)")
+                        Text(onboarding.t("health_your_target", target.label))
                             .font(.caption2)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }
@@ -208,12 +209,12 @@ struct MyHealthView: View {
     private var bpLegend: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 16) {
-                legendDot(color: NivaraColor.forestGreen, label: "Systolic")
-                legendDot(color: NivaraColor.forestGreen.opacity(0.4), label: "Diastolic")
+                legendDot(color: NivaraColor.forestGreen, label: onboarding.t("health_systolic"))
+                legendDot(color: NivaraColor.forestGreen.opacity(0.4), label: onboarding.t("health_diastolic"))
                 Spacer()
             }
             if !visibleBPMedicationChanges.isEmpty {
-                Label("Dashed line marks a medication change", systemImage: "pill.fill")
+                Label(onboarding.t("health_medication_change_marker"), systemImage: "pill.fill")
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -224,7 +225,7 @@ struct MyHealthView: View {
     private var recentBPReadings: some View {
         let recent = Array(viewModel.vitals.bpReadings.suffix(5).reversed())
         return VStack(alignment: .leading, spacing: 10) {
-            Text("RECENT READINGS")
+            Text(onboarding.t("health_recent_readings"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
                 .padding(.top, 6)
@@ -235,7 +236,7 @@ struct MyHealthView: View {
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()
-                    Text("\(reading.systolic)/\(reading.diastolic) mmHg")
+                    Text(onboarding.t("health_bp_value", reading.systolic, reading.diastolic))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
                 }
@@ -246,7 +247,7 @@ struct MyHealthView: View {
                 NavigationLink {
                     BPHistoryListView()
                 } label: {
-                    Text("See More")
+                    Text(onboarding.t("common_see_more"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
@@ -258,7 +259,7 @@ struct MyHealthView: View {
 
     private var hba1cSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("HbA1c", icon: "testtube.2")
+            sectionHeader(onboarding.t("health_hba1c"), icon: "testtube.2")
 
             if let latest = viewModel.vitals.latestHbA1c {
                 VStack(alignment: .leading, spacing: 4) {
@@ -270,11 +271,11 @@ struct MyHealthView: View {
                             .font(.subheadline)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }
-                    Text(NivaraDate.relative(latest.date))
+                    Text(NivaraDate.relative(latest.date, language: onboarding.selectedLanguage))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     if let tier = profile.hba1cTier {
-                        Text("Your target: \(tier.targetLabel)")
+                        Text(onboarding.t("health_your_target", tier.targetLabel))
                             .font(.caption2)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }
@@ -324,7 +325,7 @@ struct MyHealthView: View {
     private var recentHbA1cReadings: some View {
         let recent = Array(viewModel.vitals.hba1cReadings.suffix(5).reversed())
         return VStack(alignment: .leading, spacing: 10) {
-            Text("RECENT A1C RESULTS")
+            Text(onboarding.t("health_recent_a1c_results"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
                 .padding(.top, 6)
@@ -346,7 +347,7 @@ struct MyHealthView: View {
                 NavigationLink {
                     HbA1cHistoryListView()
                 } label: {
-                    Text("See More")
+                    Text(onboarding.t("common_see_more"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
@@ -362,7 +363,7 @@ struct MyHealthView: View {
     /// `retagRow`, not something the app should silently filter on.
     private var glucoseSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Blood Glucose", icon: "drop.fill")
+            sectionHeader(onboarding.t("health_blood_glucose"), icon: "drop.fill")
 
             if let latest = viewModel.vitals.latestGlucose {
                 VStack(alignment: .leading, spacing: 4) {
@@ -370,12 +371,12 @@ struct MyHealthView: View {
                         Text("\(latest.glucoseMgDl)")
                             .font(.system(size: 44, weight: .bold, design: .rounded))
                             .foregroundStyle(NivaraColor.textPrimary)
-                        Text("mg/dL")
+                        Text(onboarding.t("health_unit_mgdl"))
                             .font(.subheadline)
                             .foregroundStyle(NivaraColor.textSecondary)
                         PillLabel(text: latest.sampleType.displayName)
                     }
-                    Text(NivaraDate.relative(latest.date))
+                    Text(NivaraDate.relative(latest.date, language: onboarding.selectedLanguage))
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     if let status = viewModel.latestGlucoseStatus {
@@ -434,7 +435,7 @@ struct MyHealthView: View {
                     .symbolSize(120)
                     .annotation(position: .top) {
                         VStack(spacing: 2) {
-                            Text("\(selected.glucoseMgDl) mg/dL")
+                            Text(onboarding.t("health_glucose_value", selected.glucoseMgDl))
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(NivaraColor.textPrimary)
                             Text("\(selected.sampleType.displayName) · \(NivaraDate.shortWithTime.string(from: selected.date))")
@@ -483,15 +484,15 @@ struct MyHealthView: View {
     private var glucoseLegend: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 16) {
-                legendDot(color: NivaraColor.forestGreen, label: "Fasting")
-                legendDot(color: NivaraColor.warning, label: "Post-meal")
+                legendDot(color: NivaraColor.forestGreen, label: onboarding.t("health_fasting"))
+                legendDot(color: NivaraColor.warning, label: onboarding.t("health_post_meal"))
                 Spacer()
-                Text("Drag the graph to see a reading")
+                Text(onboarding.t("health_drag_graph_hint"))
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
             if !visibleMedicationChanges.isEmpty {
-                Label("Dashed line marks a medication change", systemImage: "pill.fill")
+                Label(onboarding.t("health_medication_change_marker"), systemImage: "pill.fill")
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -511,7 +512,7 @@ struct MyHealthView: View {
     private var recentGlucoseReadings: some View {
         let recent = Array(viewModel.vitals.glucoseReadings.suffix(5).reversed())
         return VStack(alignment: .leading, spacing: 10) {
-            Text("RECENT READINGS")
+            Text(onboarding.t("health_recent_readings"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
                 .padding(.top, 6)
@@ -522,8 +523,8 @@ struct MyHealthView: View {
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()
-                    PillLabel(text: reading.sampleType == .fasting ? "F" : "PP")
-                    Text("\(reading.glucoseMgDl) mg/dL")
+                    PillLabel(text: reading.sampleType == .fasting ? onboarding.t("health_fasting_abbrev") : onboarding.t("health_post_meal_abbrev"))
+                    Text(onboarding.t("health_glucose_value", reading.glucoseMgDl))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
                 }
@@ -534,7 +535,7 @@ struct MyHealthView: View {
                 NavigationLink {
                     GlucoseHistoryListView()
                 } label: {
-                    Text("See More")
+                    Text(onboarding.t("common_see_more"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
@@ -547,7 +548,7 @@ struct MyHealthView: View {
     /// therefore which target range it's judged against) is wrong.
     private func retagRow(for reading: GlucoseReading) -> some View {
         HStack(spacing: 8) {
-            Text("Latest reading tagged as \(reading.sampleType.displayName.lowercased()). Wrong?")
+            Text(onboarding.t("health_retag_prompt", reading.sampleType.displayName.lowercased()))
                 .font(.caption2)
                 .foregroundStyle(NivaraColor.textSecondary)
             Spacer()
@@ -555,7 +556,7 @@ struct MyHealthView: View {
                 let corrected: GlucoseSampleType = reading.sampleType == .fasting ? .postMeal : .fasting
                 viewModel.vitals.retagLatestGlucose(as: corrected)
             } label: {
-                Text("Mark as \((reading.sampleType == .fasting ? GlucoseSampleType.postMeal : .fasting).displayName)")
+                Text(onboarding.t("health_mark_as", (reading.sampleType == .fasting ? GlucoseSampleType.postMeal : .fasting).displayName))
                     .font(.caption2.weight(.semibold))
             }
             .buttonStyle(.plain)
@@ -573,12 +574,14 @@ struct MyHealthView: View {
     }
 
     private var noReadingYet: some View {
-        Text("No reading yet — connect a device to get started.")
+        Text(onboarding.t("health_no_reading_yet"))
             .font(.subheadline)
             .foregroundStyle(NivaraColor.textSecondary)
     }
 }
 
 #Preview {
-    MyHealthView().environmentObject(PatientViewModel())
+    MyHealthView()
+        .environmentObject(PatientViewModel())
+        .environmentObject(OnboardingStore())
 }

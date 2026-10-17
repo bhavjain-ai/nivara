@@ -5,6 +5,7 @@ import SwiftUI
 /// tab is selected.
 struct RootView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
     @State private var selectedTab: AppTab = .home
 
     var body: some View {
@@ -81,7 +82,7 @@ struct RootView: View {
             VStack(spacing: 5) {
                 Image(systemName: tab.icon)
                     .font(.system(size: 19, weight: .medium))
-                Text(tab.rawValue)
+                Text(tab.displayName(for: onboarding.selectedLanguage))
                     .font(.system(size: 9.5, weight: .semibold))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)

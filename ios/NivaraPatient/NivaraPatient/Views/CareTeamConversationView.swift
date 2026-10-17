@@ -11,6 +11,7 @@ struct CareTeamConversationView: View {
 
     @StateObject private var chat: ChatViewModel
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     init(member: CareTeamMember) {
         self.member = member
@@ -23,7 +24,7 @@ struct CareTeamConversationView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         if member.entries.isEmpty && chat.messages.isEmpty {
-                            Text("No messages yet.")
+                            Text(onboarding.t("chat_no_messages_yet"))
                                 .font(.subheadline)
                                 .foregroundStyle(NivaraColor.textSecondary)
                                 .padding(.top, 20)
@@ -52,7 +53,7 @@ struct CareTeamConversationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(onboarding.t("common_done")) { dismiss() }
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
             }
@@ -121,13 +122,13 @@ struct CareTeamConversationView: View {
     private var composer: some View {
         VStack(alignment: .leading, spacing: 4) {
             if !chat.isAvailable {
-                Text("Messaging isn't set up in this build yet — see the README's Supabase setup section.")
+                Text(onboarding.t("chat_not_set_up"))
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
                     .padding(.horizontal)
             }
             HStack(spacing: 8) {
-                TextField("Message \(member.name)…", text: $chat.draft, axis: .vertical)
+                TextField(onboarding.t("chat_message_placeholder", member.name), text: $chat.draft, axis: .vertical)
                     .padding(10)
                     .background(NivaraColor.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -155,4 +156,5 @@ struct CareTeamConversationView: View {
     CareTeamConversationView(
         member: CareTeamMember(role: .dietician, name: "Rohan Bhatt", entries: DemoPatientData.patient.outreachLog)
     )
+    .environmentObject(OnboardingStore())
 }

@@ -6,6 +6,7 @@ import SwiftUI
 /// used instead since flashing text is a rough accessibility pattern
 /// (photosensitivity, distraction for low-vision users).
 struct OnboardingWelcomeView: View {
+    @EnvironmentObject private var onboarding: OnboardingStore
     let onContinue: () -> Void
 
     @State private var appeared = false
@@ -27,10 +28,10 @@ struct OnboardingWelcomeView: View {
                 }
 
                 VStack(spacing: 10) {
-                    Text("Welcome to Nivara")
+                    Text(onboarding.t("welcome_title"))
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-                    Text("Your care team, connected to your everyday readings.")
+                    Text(onboarding.t("welcome_subtitle"))
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
                         .multilineTextAlignment(.center)
@@ -42,7 +43,7 @@ struct OnboardingWelcomeView: View {
                 Spacer()
 
                 Button(action: onContinue) {
-                    Text("Help Us Get Started")
+                    Text(onboarding.t("welcome_cta"))
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -66,4 +67,5 @@ struct OnboardingWelcomeView: View {
 
 #Preview {
     OnboardingWelcomeView(onContinue: {})
+        .environmentObject(OnboardingStore())
 }

@@ -12,6 +12,7 @@ struct ConsentDocumentSheet: View {
     var onReachedBottom: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     var body: some View {
         NavigationStack {
@@ -41,7 +42,7 @@ struct ConsentDocumentSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(onboarding.t("common_done")) { dismiss() }
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
             }
@@ -51,4 +52,5 @@ struct ConsentDocumentSheet: View {
 
 #Preview {
     ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle, sections: ConsentDocuments.informedConsentSections)
+        .environmentObject(OnboardingStore())
 }

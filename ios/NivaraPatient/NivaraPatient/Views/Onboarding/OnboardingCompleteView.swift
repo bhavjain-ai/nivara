@@ -20,11 +20,11 @@ struct OnboardingCompleteView: View {
         let status = ClinicalGuidelines.analyzeGlucose(glucose: reading.glucoseMgDl, sampleType: reading.sampleType, targets: targets)
         let rangeText: String
         switch status.level {
-        case .normal: rangeText = "within range"
-        case .warning: rangeText = "a little outside your usual range"
-        case .critical: rangeText = "outside your target range"
+        case .normal: rangeText = onboarding.t("complete_range_normal")
+        case .warning: rangeText = onboarding.t("complete_range_warning")
+        case .critical: rangeText = onboarding.t("complete_range_critical")
         }
-        return "Thank you for taking your first measurement. Your blood glucose is \(reading.glucoseMgDl) mg/dL, which is \(rangeText). Great job!"
+        return onboarding.t("complete_first_reading_message", reading.glucoseMgDl, rangeText)
     }
 
     var body: some View {
@@ -37,7 +37,7 @@ struct OnboardingCompleteView: View {
                     .font(.system(size: 64))
                     .foregroundStyle(NivaraColor.forestGreen)
 
-                Text("You're all set!")
+                Text(onboarding.t("complete_title"))
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(NivaraColor.textPrimary)
 
@@ -49,7 +49,7 @@ struct OnboardingCompleteView: View {
 
                 Spacer()
 
-                OnboardingPrimaryButton(title: "Go to Nivara") {
+                OnboardingPrimaryButton(title: onboarding.t("complete_go_to_nivara")) {
                     // Fire-and-forget: registration is best-effort (see
                     // SupabaseService.registerPatient) and must never delay
                     // or block getting into the main app, whether that's
@@ -71,8 +71,8 @@ struct OnboardingCompleteView: View {
     }
 
     private var fallbackMessage: String {
-        let name = onboarding.firstName.isEmpty ? "there" : onboarding.firstName
-        return "Welcome, \(name). You can connect your glucometer anytime from My Health."
+        let name = onboarding.firstName.isEmpty ? onboarding.t("complete_fallback_name") : onboarding.firstName
+        return onboarding.t("complete_fallback_message", name)
     }
 }
 
