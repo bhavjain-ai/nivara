@@ -32,15 +32,15 @@ struct OnboardingConsentView: View {
         ) {
             VStack(alignment: .leading, spacing: 16) {
                 consentCard(
-                    title: ConsentDocuments.informedConsentTitle,
-                    summary: ConsentDocuments.informedConsentSummary,
+                    title: ConsentDocuments.informedConsentTitle(for: onboarding.selectedLanguage),
+                    summary: ConsentDocuments.informedConsentSummary(for: onboarding.selectedLanguage),
                     hasRead: hasReadInformedConsent,
                     isAccepted: $onboarding.acceptedInformedConsent,
                     showFullText: { showingInformedConsent = true }
                 )
                 consentCard(
-                    title: ConsentDocuments.privacyConsentTitle,
-                    summary: ConsentDocuments.privacyConsentSummary,
+                    title: ConsentDocuments.privacyConsentTitle(for: onboarding.selectedLanguage),
+                    summary: ConsentDocuments.privacyConsentSummary(for: onboarding.selectedLanguage),
                     hasRead: hasReadPrivacyConsent,
                     isAccepted: $onboarding.acceptedPrivacyConsent,
                     showFullText: { showingPrivacyConsent = true }
@@ -62,15 +62,15 @@ struct OnboardingConsentView: View {
         }
         .sheet(isPresented: $showingInformedConsent) {
             ConsentDocumentSheet(
-                title: ConsentDocuments.informedConsentTitle,
-                sections: ConsentDocuments.informedConsentSections,
+                title: ConsentDocuments.informedConsentTitle(for: onboarding.selectedLanguage),
+                sections: ConsentDocuments.informedConsentSections(for: onboarding.selectedLanguage),
                 onReachedBottom: { hasReadInformedConsent = true }
             )
         }
         .sheet(isPresented: $showingPrivacyConsent) {
             ConsentDocumentSheet(
-                title: ConsentDocuments.privacyConsentTitle,
-                sections: ConsentDocuments.privacyConsentSections,
+                title: ConsentDocuments.privacyConsentTitle(for: onboarding.selectedLanguage),
+                sections: ConsentDocuments.privacyConsentSections(for: onboarding.selectedLanguage),
                 onReachedBottom: { hasReadPrivacyConsent = true }
             )
         }

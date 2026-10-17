@@ -50,5 +50,10 @@ struct ConsentDocumentSheet: View {
 }
 
 #Preview {
+<<<<<<< HEAD
     ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle, sections: ConsentDocuments.informedConsentSections)
+=======
+    ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle(for: .english), sections: ConsentDocuments.informedConsentSections(for: .english))
+        .environmentObject(OnboardingStore())
+>>>>>>> dd8c732 (Translate legal consent text, goal/role/tier display names, and BLE messages)
 }

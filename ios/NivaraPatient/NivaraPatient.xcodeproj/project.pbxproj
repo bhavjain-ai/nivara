@@ -59,7 +59,9 @@
 		F02E9D680DC7B5947BECEC32 /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924F92C980F1BD21BCFF4DF6 /* OnboardingFlowView.swift */; };
 		F29762D204B28227725A7EC9 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84878E5B85EDF4DAD3C343C2 /* RootView.swift */; };
 		F678128C202C414DF28E4891 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ACAE7451533DC71118E34C /* SupabaseConfig.swift */; };
+		F6D49CFA25A501C18020C975 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8915D30823EF1B2AD5973AA /* AppLanguage.swift */; };
 		FAD631294D14132B86645A1D /* ToastBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EC5329179FC072CBAF13D3 /* ToastBanner.swift */; };
+		FCA0E7E17C367C13DE9F3704 /* Translations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6BE2115F1B75DD0401B4E7 /* Translations.swift */; };
 		FF30BB6875ADED8959294D43 /* VitalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36470959BDA73C33DD7661C3 /* VitalModels.swift */; };
 /* End PBXBuildFile section */
 
@@ -86,6 +88,7 @@
 		780259E2BA4536D864C850BD /* OnboardingBasicInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingBasicInfoView.swift; sourceTree = "<group>"; };
 		7C6E90453D408795026D4212 /* OnboardingConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingConsentView.swift; sourceTree = "<group>"; };
 		7CA7CD3FCDB1FA0A07C20875 /* NivaraPatientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NivaraPatientApp.swift; sourceTree = "<group>"; };
+		7E6BE2115F1B75DD0401B4E7 /* Translations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Translations.swift; sourceTree = "<group>"; };
 		8374DD900A10B4EAB14F41C3 /* NivaraPatient.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NivaraPatient.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		84878E5B85EDF4DAD3C343C2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		86476B515C082781DB7070C1 /* CareTeamMember.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareTeamMember.swift; sourceTree = "<group>"; };
@@ -108,6 +111,7 @@
 		B3B5D39448BB69ED4727DD9C /* DateFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormatting.swift; sourceTree = "<group>"; };
 		B3CC1D71ECEEEEE35A3B8DBC /* OnboardingScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScaffold.swift; sourceTree = "<group>"; };
 		B69B99C06254A484E52464CE /* PatientModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientModels.swift; sourceTree = "<group>"; };
+		B8915D30823EF1B2AD5973AA /* AppLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLanguage.swift; sourceTree = "<group>"; };
 		BD59B6077C92E685F7F6C5B2 /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTab.swift; sourceTree = "<group>"; };
 		BE1DABB5071C638742E1C683 /* GlucoseMeasurementParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseMeasurementParser.swift; sourceTree = "<group>"; };
 		C5ACAE7451533DC71118E34C /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
@@ -249,6 +253,7 @@
 				7CA7CD3FCDB1FA0A07C20875 /* NivaraPatientApp.swift */,
 				4ABDEF357D27482C481D100C /* Bluetooth */,
 				35A81E93380967C31B7E35AE /* Guidelines */,
+				9C197F9C50F8EA01A5E034AD /* Localization */,
 				88993A8DAADFFBFC0E359776 /* Models */,
 				E77EE5770CA55A773D14A9B9 /* Services */,
 				3FE0822797C5C033759495AD /* Theme */,
@@ -256,6 +261,15 @@
 				165636405ACE685A82B7BFBB /* Views */,
 			);
 			path = NivaraPatient;
+			sourceTree = "<group>";
+		};
+		9C197F9C50F8EA01A5E034AD /* Localization */ = {
+			isa = PBXGroup;
+			children = (
+				B8915D30823EF1B2AD5973AA /* AppLanguage.swift */,
+				7E6BE2115F1B75DD0401B4E7 /* Translations.swift */,
+			);
+			path = Localization;
 			sourceTree = "<group>";
 		};
 		C1E11FA6424F7A8318E3F73E /* Components */ = {
@@ -356,6 +370,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F6D49CFA25A501C18020C975 /* AppLanguage.swift in Sources */,
 				AAD88F89B8ACFEF1CDBF32BD /* AppTab.swift in Sources */,
 				629527AE8DD4E968562BE2F0 /* BLEManager.swift in Sources */,
 				BA0AA22FAD238653A0E3CC71 /* BPHistoryListView.swift in Sources */,
@@ -405,6 +420,7 @@
 				8E4C60BBCDE66EC0D5F27443 /* SupabaseModels.swift in Sources */,
 				8F6730FCABAC7A1F930F71B5 /* SupabaseService.swift in Sources */,
 				FAD631294D14132B86645A1D /* ToastBanner.swift in Sources */,
+				FCA0E7E17C367C13DE9F3704 /* Translations.swift in Sources */,
 				FF30BB6875ADED8959294D43 /* VitalModels.swift in Sources */,
 				42DA8FB77ACAC2A7A3FBA376 /* VitalsStore.swift in Sources */,
 			);

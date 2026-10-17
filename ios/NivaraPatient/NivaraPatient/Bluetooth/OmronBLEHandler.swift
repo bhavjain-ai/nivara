@@ -29,17 +29,20 @@ final class OmronBLEHandler: NSObject {
         var errorDescription: String? {
             switch self {
             case .timeout:
-                return "The Omron cuff stopped responding."
+                return Translations.string("omron_error_timeout")
             case .disconnected:
-                return "The Bluetooth connection to the cuff was lost before the read finished."
+                return Translations.string("omron_error_disconnected")
             case .unexpectedResponse(let detail):
-                return "Unexpected response from the Omron cuff (\(detail)). This is an experimental integration — the record format may not match your exact model."
+                // `detail` is a developer-facing diagnostic fragment (hex
+                // codes, protocol terms) deliberately left untranslated —
+                // only the surrounding sentence is translated.
+                return Translations.string("omron_error_unexpected_response", detail)
             case .checksumMismatch:
-                return "Data was corrupted in transit from the Omron cuff."
+                return Translations.string("omron_error_checksum_mismatch")
             case .notPaired:
-                return "This Omron cuff isn't paired yet. Hold its Bluetooth button until \"-P-\" blinks on the display, then try connecting again."
+                return Translations.string("omron_error_not_paired")
             case .missingCharacteristics:
-                return "Expected Omron characteristics weren't found on this device."
+                return Translations.string("omron_error_missing_characteristics")
             }
         }
     }
@@ -108,16 +111,16 @@ final class OmronBLEHandler: NSObject {
         self.peripheral = peripheral
         peripheral.delegate = self
 
-        onProgress?("Discovering Omron characteristics…")
+        onProgress?(Translations.string("omron_progress_discovering"))
         try await discoverCharacteristics(service: parentService)
-        onProgress?("Enabling notifications…")
+        onProgress?(Translations.string("omron_progress_enabling_notifications"))
         try await enableNotifications()
-        onProgress?("Unlocking…")
+        onProgress?(Translations.string("omron_progress_unlocking"))
         try await unlockOrPair()
-        onProgress?("Starting data transfer…")
+        onProgress?(Translations.string("omron_progress_starting_transfer"))
         try await startTransmission()
 
-        onProgress?("Reading latest reading…")
+        onProgress?(Translations.string("omron_progress_reading_latest"))
         let metadata = try await readBlockEeprom(
             address: OmronProtocol.latestReadingMetadataAddress,
             size: OmronProtocol.latestReadingMetadataSize
@@ -138,7 +141,7 @@ final class OmronBLEHandler: NSObject {
             UserDefaults.standard.set(found.address, forKey: cursorKey)
         }
 
-        onProgress?("Finishing…")
+        onProgress?(Translations.string("omron_progress_finishing"))
         try await endTransmission()
 
         guard let found,
@@ -146,7 +149,7 @@ final class OmronBLEHandler: NSObject {
               let timestamp = reading.timestamp,
               abs(Date().timeIntervalSince(timestamp)) <= Self.freshnessWindow
         else {
-            onProgress?("Couldn't confirm a reading from the last few minutes.")
+            onProgress?(Translations.string("omron_progress_no_recent_reading"))
             return []
         }
         return [reading]
@@ -245,9 +248,9 @@ final class OmronBLEHandler: NSObject {
             // app's key before. Attempt pairing — if the cuff isn't
             // physically in pairing mode, this fails cleanly with a clear
             // error after ~10s rather than doing anything harmful.
-            onProgress?("Not paired yet — hold the cuff's Bluetooth button until \"-P-\" shows, pairing…")
+            onProgress?(Translations.string("omron_progress_pairing"))
             try await pair(newKey: OmronProtocol.defaultPairingKey)
-            onProgress?("Paired — unlocking…")
+            onProgress?(Translations.string("omron_progress_paired_unlocking"))
             try await unlock(key: OmronProtocol.defaultPairingKey)
         }
     }
@@ -262,7 +265,7 @@ final class OmronBLEHandler: NSObject {
     private func pair(newKey: [UInt8]) async throws {
         var enteredProgrammingMode = false
         for attempt in 1...10 {
-            onProgress?("Waiting for pairing mode (attempt \(attempt) of 10)…")
+            onProgress?(Translations.string("omron_progress_waiting_pairing_mode", attempt))
             let response = try await writeToUnlockCharacteristic(Data([0x02] + [UInt8](repeating: 0, count: 16)))
             if response.count >= 2, response.prefix(2) == OmronProtocol.ResponseType.enterKeyProgrammingMode {
                 enteredProgrammingMode = true

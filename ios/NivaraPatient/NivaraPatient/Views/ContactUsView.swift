@@ -33,7 +33,7 @@ struct ContactUsView: View {
                             icon: "heart.text.square.fill",
                             title: "Your Care Coordinator",
                             name: coordinator.coordinatorName,
-                            subtitle: coordinator.coordinatorRole.rawValue,
+                            subtitle: coordinator.coordinatorRole.displayName(for: onboarding.selectedLanguage),
                             phone: nil
                         )
                     }
