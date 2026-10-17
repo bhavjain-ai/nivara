@@ -5,6 +5,7 @@ import { Patient, Medication } from '@/types';
 import { getEscalationRecommendation } from '@/lib/htn-titration';
 import { getDiabetesEscalationRecommendation } from '@/lib/diabetes-titration';
 import { DIABETES_DRUG_CLASSES } from '@/lib/medication-classify';
+import { COMMON_MEDICATIONS } from '@/lib/common-medications';
 import { AlertTriangle, ShieldAlert, Info, BookOpen, Pill, Clock, Syringe, Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 
 interface MedicationPanelProps {
@@ -89,15 +90,54 @@ function MedFormRow({
   onCancel: () => void;
   onSubmit: () => void;
 }) {
+  const commonNames = COMMON_MEDICATIONS[form.drugClass] ?? [];
+  const [useCustomName, setUseCustomName] = useState(() => form.name !== '' && !commonNames.includes(form.name));
+
   return (
     <tr className="bg-blue-50/40">
       <td className="py-2 pr-2">
-        <input
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="Name"
-          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
-        />
+        {useCustomName ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Medication name"
+              className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+              autoFocus
+            />
+            {commonNames.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setUseCustomName(false);
+                  setForm({ ...form, name: '' });
+                }}
+                className="text-xs text-gray-400 hover:text-[#1e3a5f] underline shrink-0"
+              >
+                list
+              </button>
+            )}
+          </div>
+        ) : (
+          <select
+            value={form.name}
+            onChange={(e) => {
+              if (e.target.value === '__other__') {
+                setUseCustomName(true);
+                setForm({ ...form, name: '' });
+              } else {
+                setForm({ ...form, name: e.target.value });
+              }
+            }}
+            className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+          >
+            <option value="" disabled>Select...</option>
+            {commonNames.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+            <option value="__other__">Other (type manually)</option>
+          </select>
+        )}
       </td>
       <td className="py-2 pr-2">
         <select
