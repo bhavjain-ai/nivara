@@ -45,11 +45,11 @@ struct CareTeamView: View {
     private var coachingProgressCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(profile.coachingTier.rawValue)
+                Text(profile.coachingTier.displayName(for: onboarding.selectedLanguage))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(profile.coachingTier.color)
                 Spacer()
-                Text(profile.coachingTier.cadence)
+                Text(profile.coachingTier.cadence(for: onboarding.selectedLanguage))
                     .font(.caption)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -100,7 +100,7 @@ struct CareTeamView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
-                Text(member.role.rawValue)
+                Text(member.role.displayName(for: onboarding.selectedLanguage))
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
 
@@ -148,9 +148,9 @@ struct CareTeamView: View {
             ForEach(profile.smartGoals) { goal in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        PillLabel(text: goal.category)
+                        PillLabel(text: goalCategoryDisplayName(goal.category, for: onboarding.selectedLanguage))
                         Spacer()
-                        PillLabel(text: goal.status.rawValue, color: goal.status.color, background: goal.status.color.opacity(0.15))
+                        PillLabel(text: goal.status.displayName(for: onboarding.selectedLanguage), color: goal.status.color, background: goal.status.color.opacity(0.15))
                     }
                     Text(goal.description)
                         .font(.subheadline)

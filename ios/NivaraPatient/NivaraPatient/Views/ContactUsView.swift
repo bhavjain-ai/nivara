@@ -34,7 +34,7 @@ struct ContactUsView: View {
                             icon: "heart.text.square.fill",
                             title: onboarding.t("contact_your_care_coordinator"),
                             name: coordinator.coordinatorName,
-                            subtitle: coordinator.coordinatorRole.rawValue,
+                            subtitle: coordinator.coordinatorRole.displayName(for: onboarding.selectedLanguage),
                             phone: nil
                         )
                     }

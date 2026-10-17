@@ -51,6 +51,26 @@ enum CoachingTier: String, Codable {
         case .maintenanceTouch: return "Monthly calls"
         }
     }
+
+    func displayName(for language: AppLanguage) -> String {
+        let key: String
+        switch self {
+        case .highTouch: key = "coaching_tier_high_touch"
+        case .moderateTouch: key = "coaching_tier_moderate_touch"
+        case .maintenanceTouch: key = "coaching_tier_maintenance_touch"
+        }
+        return Translations.table[key]?[language] ?? Translations.table[key]?[.english] ?? rawValue
+    }
+
+    func cadence(for language: AppLanguage) -> String {
+        let key: String
+        switch self {
+        case .highTouch: key = "coaching_tier_cadence_weekly"
+        case .moderateTouch: key = "coaching_tier_cadence_biweekly"
+        case .maintenanceTouch: key = "coaching_tier_cadence_monthly"
+        }
+        return Translations.table[key]?[language] ?? Translations.table[key]?[.english] ?? cadence
+    }
 }
 
 /// The three people on a patient's care team shown on the Care Team page.
@@ -67,6 +87,16 @@ enum CoordinatorRole: String, Codable, CaseIterable {
         case .dietician: return "leaf.fill"
         case .coach: return "figure.walk"
         }
+    }
+
+    func displayName(for language: AppLanguage) -> String {
+        let key: String
+        switch self {
+        case .physician: key = "coordinator_role_physician"
+        case .dietician: key = "coordinator_role_dietician"
+        case .coach: key = "coordinator_role_coach"
+        }
+        return Translations.table[key]?[language] ?? Translations.table[key]?[.english] ?? rawValue
     }
 }
 
@@ -98,6 +128,30 @@ enum SmartGoalStatus: String, Codable {
     case met = "Met"
     case partiallyMet = "Partially Met"
     case notMet = "Not Met"
+
+    func displayName(for language: AppLanguage) -> String {
+        let key: String
+        switch self {
+        case .onTrack: key = "goal_status_on_track"
+        case .atRisk: key = "goal_status_at_risk"
+        case .met: key = "goal_status_met"
+        case .partiallyMet: key = "goal_status_partially_met"
+        case .notMet: key = "goal_status_not_met"
+        }
+        return Translations.table[key]?[language] ?? Translations.table[key]?[.english] ?? rawValue
+    }
+}
+
+/// `SmartGoal.category` is a free-form `String` (set by the care team via the
+/// dashboard, e.g. "Diet", "Physical Activity") rather than a fixed enum, so
+/// it can't get a `displayName(for:)` the way the enums above do. This looks
+/// up a translation for the known category names used by the demo/dashboard
+/// data and falls back to the original English text for anything not in the
+/// table, so a category the dashboard adds later still displays (in English)
+/// instead of crashing or showing a blank.
+func goalCategoryDisplayName(_ category: String, for language: AppLanguage) -> String {
+    let key = "goal_category_" + category.lowercased().replacingOccurrences(of: " ", with: "_")
+    return Translations.table[key]?[language] ?? category
 }
 
 struct SmartGoal: Identifiable, Codable, Equatable {

@@ -28,4 +28,14 @@ enum AppLanguage: String, CaseIterable, Codable, Identifiable {
     }
 
     var locale: Locale { Locale(identifier: rawValue) }
+
+    /// Reads the patient's selected language directly from UserDefaults,
+    /// using the same key OnboardingStore persists it under. For code that
+    /// isn't a SwiftUI view (e.g. BLEManager, a plain ObservableObject with
+    /// no EnvironmentObject access) and so can't read OnboardingStore's
+    /// `selectedLanguage` the normal way — this lets it still translate
+    /// user-visible text without needing a language passed in explicitly.
+    static var current: AppLanguage {
+        UserDefaults.standard.string(forKey: "onboarding.selectedLanguage").flatMap(AppLanguage.init) ?? .english
+    }
 }

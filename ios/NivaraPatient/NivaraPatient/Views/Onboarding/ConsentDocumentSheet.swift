@@ -51,6 +51,6 @@ struct ConsentDocumentSheet: View {
 }
 
 #Preview {
-    ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle, sections: ConsentDocuments.informedConsentSections)
+    ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle(for: .english), sections: ConsentDocuments.informedConsentSections(for: .english))
         .environmentObject(OnboardingStore())
 }

@@ -123,7 +123,7 @@ final class BLEManager: NSObject, ObservableObject {
 
         guard let peripheral = centralManager.retrievePeripherals(withIdentifiers: [id]).first else { return }
         peripherals[peripheral.identifier] = peripheral
-        let device = DiscoveredDevice(id: peripheral.identifier, name: peripheral.name ?? "Device", rssi: 0, kind: .unknown)
+        let device = DiscoveredDevice(id: peripheral.identifier, name: peripheral.name ?? Translations.string("ble_device_fallback_name"), rssi: 0, kind: .unknown)
         connect(to: device)
     }
 
@@ -145,7 +145,7 @@ final class BLEManager: NSObject, ObservableObject {
             guard let self, self.connectingPeripheralID == timeoutDeviceID else { return }
             self.connectingPeripheralID = nil
             self.centralManager.cancelPeripheralConnection(peripheral)
-            self.state = .failed("Couldn't connect to \(device.name) — it didn't respond in time. Make sure it's powered on, nearby, and not already connected to another app or phone.")
+            self.state = .failed(Translations.string("ble_error_couldnt_connect_timeout", device.name))
         }
     }
 
@@ -175,7 +175,7 @@ final class BLEManager: NSObject, ObservableObject {
     private func handleOmronConnection(peripheral: CBPeripheral, service: CBService) {
         let handler = OmronBLEHandler()
         omronHandlers[peripheral.identifier] = handler
-        let deviceName = peripheral.name ?? "Omron cuff"
+        let deviceName = peripheral.name ?? Translations.string("ble_omron_fallback_name")
         handler.onProgress = { [weak self] message in
             // OmronBLEHandler isn't @MainActor-isolated, so code resuming
             // after an `await` inside it (unlike BLEManager's own
@@ -186,7 +186,7 @@ final class BLEManager: NSObject, ObservableObject {
                 self?.state = .readingOmronHistory("\(deviceName): \(message)")
             }
         }
-        state = .readingOmronHistory("\(deviceName): Connecting…")
+        state = .readingOmronHistory("\(deviceName): \(Translations.string("omron_progress_connecting"))")
         Task { @MainActor in
             do {
                 let readings = try await handler.readBloodPressureRecords(on: peripheral, parentService: service)
@@ -194,7 +194,7 @@ final class BLEManager: NSObject, ObservableObject {
                     self.onBPReading?(reading)
                 }
                 if readings.isEmpty {
-                    self.state = .failed("Connected, but couldn't find a reading from the last few minutes. Take a new measurement on the cuff, then connect again.")
+                    self.state = .failed(Translations.string("ble_error_no_recent_reading"))
                 } else {
                     self.state = .connected(deviceName)
                 }
@@ -226,7 +226,7 @@ extension BLEManager: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
         peripherals[peripheral.identifier] = peripheral
 
-        let name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "Unknown Device"
+        let name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? Translations.string("ble_device_unknown_name")
         let advertisedServices = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? []
         let kind: DiscoveredDevice.Kind
         if advertisedServices.contains(GATT.glucoseService) {
@@ -251,14 +251,18 @@ extension BLEManager: CBCentralManagerDelegate {
         connectingPeripheralID = nil
         peripheral.delegate = self
         peripheral.discoverServices([GATT.glucoseService, GATT.bloodPressureService, OmronProtocol.parentService])
-        connectedDeviceName = peripheral.name ?? "Device"
-        state = .connected(peripheral.name ?? "Device")
+        let resolvedName = peripheral.name ?? Translations.string("ble_device_fallback_name")
+        connectedDeviceName = resolvedName
+        state = .connected(resolvedName)
         UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: Self.lastKnownPeripheralDefaultsKey)
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         connectingPeripheralID = nil
-        state = .failed(error?.localizedDescription ?? "Couldn't connect to \(peripheral.name ?? "device").")
+        // error?.localizedDescription is a CoreBluetooth/system-generated
+        // message (when present) and is shown as-is, untranslated — iOS
+        // itself doesn't localize it per the app's selected language.
+        state = .failed(error?.localizedDescription ?? Translations.string("ble_error_couldnt_connect_generic", peripheral.name ?? Translations.string("ble_device_fallback_name")))
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {

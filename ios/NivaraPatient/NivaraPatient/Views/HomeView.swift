@@ -258,7 +258,7 @@ struct HomeView: View {
                         .font(.caption)
                         .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()
-                    PillLabel(text: goal.status.rawValue, color: goal.status.color, background: goal.status.color.opacity(0.15))
+                    PillLabel(text: goal.status.displayName(for: onboarding.selectedLanguage), color: goal.status.color, background: goal.status.color.opacity(0.15))
                 }
                 Text(goal.description)
                     .font(.subheadline)

@@ -14,6 +14,19 @@ import Foundation
 /// from clinic staff who speak the relevant language — before this reaches
 /// patients beyond the initial pilot.
 enum Translations {
+    /// Same lookup as OnboardingStore.t(_:), for code that isn't a SwiftUI
+    /// view and so can't read OnboardingStore.selectedLanguage directly
+    /// (e.g. BLEManager) — uses AppLanguage.current instead.
+    static func string(_ key: String) -> String {
+        table[key]?[AppLanguage.current] ?? table[key]?[.english] ?? key
+    }
+
+    /// Same as `string(_:)`, for a template string containing %@ placeholders.
+    static func string(_ key: String, _ args: CVarArg...) -> String {
+        let template = table[key]?[AppLanguage.current] ?? table[key]?[.english] ?? key
+        return String(format: template, arguments: args)
+    }
+
     static let table: [String: [AppLanguage: String]] = [
         // MARK: - Common / shared chrome
         "common_next": [
@@ -905,6 +918,206 @@ enum Translations {
         ],
         "tab_contact_us": [
             .english: "Contact Us", .hindi: "संपर्क करें", .telugu: "సంప్రదించండి", .kannada: "ಸಂಪರ್ಕಿಸಿ", .tamil: "தொடர்பு கொள்ள",
+        ],
+
+        // MARK: - SmartGoalStatus display
+        "goal_status_on_track": [
+            .english: "On Track", .hindi: "सही दिशा में", .telugu: "సరైన దారిలో", .kannada: "ಸರಿಯಾದ ಹಾದಿಯಲ್ಲಿ", .tamil: "சரியான பாதையில்",
+        ],
+        "goal_status_at_risk": [
+            .english: "At Risk", .hindi: "जोखिम में", .telugu: "ప్రమాదంలో", .kannada: "ಅಪಾಯದಲ್ಲಿ", .tamil: "ஆபத்தில்",
+        ],
+        "goal_status_met": [
+            .english: "Met", .hindi: "पूरा हुआ", .telugu: "పూర్తయింది", .kannada: "ಸಾಧಿಸಲಾಗಿದೆ", .tamil: "அடையப்பட்டது",
+        ],
+        "goal_status_partially_met": [
+            .english: "Partially Met", .hindi: "आंशिक रूप से पूरा", .telugu: "పాక్షికంగా పూర్తయింది", .kannada: "ಭಾಗಶಃ ಸಾಧಿಸಲಾಗಿದೆ", .tamil: "ஓரளவு அடையப்பட்டது",
+        ],
+        "goal_status_not_met": [
+            .english: "Not Met", .hindi: "पूरा नहीं हुआ", .telugu: "పూర్తవ్వలేదు", .kannada: "ಸಾಧಿಸಲಾಗಿಲ್ಲ", .tamil: "அடையப்படவில்லை",
+        ],
+
+        // MARK: - SmartGoal.category display (free-form string lookup; see
+        // goalCategoryDisplayName(_:for:) in PatientModels.swift)
+        "goal_category_diet": [
+            .english: "Diet", .hindi: "आहार", .telugu: "ఆహారం", .kannada: "ಆಹಾರ", .tamil: "உணவு",
+        ],
+        "goal_category_physical_activity": [
+            .english: "Physical Activity", .hindi: "शारीरिक गतिविधि", .telugu: "శారీరక శ్రమ", .kannada: "ದೈಹಿಕ ಚಟುವಟಿಕೆ", .tamil: "உடல் செயல்பாடு",
+        ],
+
+        // MARK: - CoordinatorRole display
+        "coordinator_role_physician": [
+            .english: "Physician", .hindi: "चिकित्सक", .telugu: "వైద్యుడు", .kannada: "ವೈದ್ಯರು", .tamil: "மருத்துவர்",
+        ],
+        "coordinator_role_dietician": [
+            .english: "Dietician", .hindi: "आहार विशेषज्ञ", .telugu: "డైటీషియన్", .kannada: "ಆಹಾರ ತಜ್ಞ", .tamil: "உணவியல் நிபுணர்",
+        ],
+        "coordinator_role_coach": [
+            .english: "Coach", .hindi: "कोच", .telugu: "కోచ్", .kannada: "ಕೋಚ್", .tamil: "பயிற்சியாளர்",
+        ],
+
+        // MARK: - CoachingTier display
+        "coaching_tier_high_touch": [
+            .english: "High-touch", .hindi: "अधिक सहयोग", .telugu: "అధిక మద్దతు", .kannada: "ಹೆಚ್ಚಿನ ಬೆಂಬಲ", .tamil: "அதிக ஆதரவு",
+        ],
+        "coaching_tier_moderate_touch": [
+            .english: "Moderate-touch", .hindi: "मध्यम सहयोग", .telugu: "మధ్యస్థ మద్దతు", .kannada: "ಮಧ್ಯಮ ಬೆಂಬಲ", .tamil: "நடுத்தர ஆதரவு",
+        ],
+        "coaching_tier_maintenance_touch": [
+            .english: "Maintenance-touch", .hindi: "रखरखाव सहयोग", .telugu: "నిర్వహణ మద్దతు", .kannada: "ನಿರ್ವಹಣೆ ಬೆಂಬಲ", .tamil: "பராமரிப்பு ஆதரவு",
+        ],
+        "coaching_tier_cadence_weekly": [
+            .english: "Weekly calls", .hindi: "साप्ताहिक कॉल", .telugu: "వారానికి కాల్స్", .kannada: "ವಾರಕ್ಕೊಮ್ಮೆ ಕರೆಗಳು", .tamil: "வாராந்திர அழைப்புகள்",
+        ],
+        "coaching_tier_cadence_biweekly": [
+            .english: "Biweekly calls", .hindi: "पाक्षिक कॉल", .telugu: "పక్షానికి కాల్స్", .kannada: "ಹದಿನೈದು ದಿನಕ್ಕೊಮ್ಮೆ ಕರೆಗಳು", .tamil: "இருவாரத்திற்கு ஒரு அழைப்புகள்",
+        ],
+        "coaching_tier_cadence_monthly": [
+            .english: "Monthly calls", .hindi: "मासिक कॉल", .telugu: "నెలవారీ కాల్స్", .kannada: "ಮಾಸಿಕ ಕರೆಗಳು", .tamil: "மாதாந்திர அழைப்புகள்",
+        ],
+
+        // MARK: - BLE connection errors / fallback device names (BLEManager.swift)
+        // Looked up via Translations.string(_:) / string(_:_:), since
+        // BLEManager isn't a SwiftUI view with OnboardingStore access.
+        "ble_error_couldnt_connect_timeout": [
+            .english: "Couldn't connect to %@ — it didn't respond in time. Make sure it's powered on, nearby, and not already connected to another app or phone.",
+            .hindi: "%@ से कनेक्ट नहीं हो सका — इसने समय पर जवाब नहीं दिया। सुनिश्चित करें कि यह चालू है, पास में है, और किसी अन्य ऐप या फ़ोन से पहले से कनेक्ट नहीं है।",
+            .telugu: "%@కి కనెక్ట్ చేయలేకపోయింది — అది సకాలంలో స్పందించలేదు. అది ఆన్‌లో ఉందని, దగ్గరగా ఉందని, మరియు ఇప్పటికే మరో యాప్ లేదా ఫోన్‌కి కనెక్ట్ అయి లేదని నిర్ధారించుకోండి.",
+            .kannada: "%@ ಗೆ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ — ಇದು ಸಕಾಲದಲ್ಲಿ ಪ್ರತಿಕ್ರಿಯಿಸಲಿಲ್ಲ. ಇದು ಆನ್ ಆಗಿದೆ, ಹತ್ತಿರದಲ್ಲಿದೆ ಮತ್ತು ಈಗಾಗಲೇ ಬೇರೊಂದು ಆಪ್ ಅಥವಾ ಫೋನ್‌ಗೆ ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ ಎಂದು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.",
+            .tamil: "%@ உடன் இணைக்க முடியவில்லை — அது சரியான நேரத்தில் பதிலளிக்கவில்லை. அது ஆன் செய்யப்பட்டுள்ளது, அருகில் உள்ளது, மற்றும் ஏற்கெனவே வேறு ஆப் அல்லது தொலைபேசியுடன் இணைக்கப்படவில்லை என்பதை உறுதிசெய்யவும்.",
+        ],
+        "ble_error_no_recent_reading": [
+            .english: "Connected, but couldn't find a reading from the last few minutes. Take a new measurement on the cuff, then connect again.",
+            .hindi: "कनेक्ट हो गया, लेकिन पिछले कुछ मिनटों की कोई रीडिंग नहीं मिली। कफ पर एक नई माप लें, फिर फिर से कनेक्ट करें।",
+            .telugu: "కనెక్ట్ అయింది, కానీ గత కొన్ని నిమిషాల్లో రీడింగ్ కనుగొనబడలేదు. కఫ్‌పై కొత్త కొలత తీసుకుని, మళ్లీ కనెక్ట్ చేయండి.",
+            .kannada: "ಸಂಪರ್ಕಗೊಂಡಿದೆ, ಆದರೆ ಕಳೆದ ಕೆಲವು ನಿಮಿಷಗಳ ವಾಚನ ಕಂಡುಬರಲಿಲ್ಲ. ಕಫ್‌ನಲ್ಲಿ ಹೊಸ ಮಾಪನ ತೆಗೆದುಕೊಂಡು, ಮತ್ತೆ ಸಂಪರ್ಕಿಸಿ.",
+            .tamil: "இணைக்கப்பட்டது, ஆனால் கடந்த சில நிமிடங்களின் அளவீடு கண்டறியப்படவில்லை. கஃப் மீது புதிய அளவீட்டை எடுத்து, மீண்டும் இணைக்கவும்.",
+        ],
+        "ble_error_couldnt_connect_generic": [
+            .english: "Couldn't connect to %@.",
+            .hindi: "%@ से कनेक्ट नहीं हो सका।",
+            .telugu: "%@కి కనెక్ట్ చేయలేకపోయింది.",
+            .kannada: "%@ ಗೆ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+            .tamil: "%@ உடன் இணைக்க முடியவில்லை.",
+        ],
+        "ble_device_fallback_name": [
+            .english: "Device", .hindi: "डिवाइस", .telugu: "పరికరం", .kannada: "ಸಾಧನ", .tamil: "சாதனம்",
+        ],
+        "ble_device_unknown_name": [
+            .english: "Unknown Device", .hindi: "अज्ञात डिवाइस", .telugu: "తెలియని పరికరం", .kannada: "ಅಪರಿಚಿತ ಸಾಧನ", .tamil: "அறியப்படாத சாதனம்",
+        ],
+        "ble_omron_fallback_name": [
+            .english: "Omron cuff", .hindi: "ओमरॉन कफ", .telugu: "ఓమ్రాన్ కఫ్", .kannada: "ಓಮ್ರಾನ್ ಕಫ್", .tamil: "ஓம்ரான் கஃப்",
+        ],
+
+        // MARK: - Omron BLE handler errors / progress (OmronBLEHandler.swift)
+        "omron_error_timeout": [
+            .english: "The Omron cuff stopped responding.",
+            .hindi: "ओमरॉन कफ ने जवाब देना बंद कर दिया।",
+            .telugu: "ఓమ్రాన్ కఫ్ స్పందించడం మానేసింది.",
+            .kannada: "ಓಮ್ರಾನ್ ಕಫ್ ಪ್ರತಿಕ್ರಿಯಿಸುವುದನ್ನು ನಿಲ್ಲಿಸಿದೆ.",
+            .tamil: "ஓம்ரான் கஃப் பதிலளிப்பதை நிறுத்திவிட்டது.",
+        ],
+        "omron_error_disconnected": [
+            .english: "The Bluetooth connection to the cuff was lost before the read finished.",
+            .hindi: "रीड पूरा होने से पहले कफ से ब्लूटूथ कनेक्शन टूट गया।",
+            .telugu: "రీడ్ పూర్తవ్వకముందే కఫ్‌కు బ్లూటూత్ కనెక్షన్ తెగిపోయింది.",
+            .kannada: "ಓದುವಿಕೆ ಪೂರ್ಣಗೊಳ್ಳುವ ಮೊದಲು ಕಫ್‌ಗೆ ಬ್ಲೂಟೂತ್ ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿತು.",
+            .tamil: "படிப்பு முடிவதற்கு முன் கஃப்புடனான புளூடூத் இணைப்பு துண்டிக்கப்பட்டது.",
+        ],
+        "omron_error_unexpected_response": [
+            .english: "Unexpected response from the Omron cuff (%@). This is an experimental integration — the record format may not match your exact model.",
+            .hindi: "ओमरॉन कफ से अप्रत्याशित प्रतिक्रिया (%@). यह एक प्रयोगात्मक एकीकरण है — रिकॉर्ड फॉर्मेट आपके सटीक मॉडल से मेल नहीं खा सकता।",
+            .telugu: "ఓమ్రాన్ కఫ్ నుండి అనుకోని ప్రతిస్పందన (%@). ఇది ఒక ప్రయోగాత్మక ఇంటిగ్రేషన్ — రికార్డ్ ఫార్మాట్ మీ ఖచ్చితమైన మోడల్‌తో సరిపోలకపోవచ్చు.",
+            .kannada: "ಓಮ್ರಾನ್ ಕಫ್‌ನಿಂದ ಅನಿರೀಕ್ಷಿತ ಪ್ರತಿಕ್ರಿಯೆ (%@). ಇದು ಪ್ರಾಯೋಗಿಕ ಏಕೀಕರಣ — ರೆಕಾರ್ಡ್ ಫಾರ್ಮ್ಯಾಟ್ ನಿಮ್ಮ ನಿಖರ ಮಾದರಿಗೆ ಹೊಂದಿಕೆಯಾಗದಿರಬಹುದು.",
+            .tamil: "ஓம்ரான் கஃப்பிலிருந்து எதிர்பாராத பதில் (%@). இது ஒரு பரிசோதனை ஒருங்கிணைப்பு — பதிவு வடிவம் உங்கள் சரியான மாடலுடன் பொருந்தாமல் இருக்கலாம்.",
+        ],
+        "omron_error_checksum_mismatch": [
+            .english: "Data was corrupted in transit from the Omron cuff.",
+            .hindi: "ओमरॉन कफ से डेटा ट्रांसमिशन में खराब हो गया।",
+            .telugu: "ఓమ్రాన్ కఫ్ నుండి డేటా ట్రాన్సిట్‌లో పాడైంది.",
+            .kannada: "ಓಮ್ರಾನ್ ಕಫ್‌ನಿಂದ ಡೇಟಾ ಸಾಗಣೆಯಲ್ಲಿ ಹಾಳಾಗಿದೆ.",
+            .tamil: "ஓம்ரான் கஃப்பிலிருந்து தரவு அனுப்பும்போது சிதைந்தது.",
+        ],
+        "omron_error_not_paired": [
+            .english: "This Omron cuff isn't paired yet. Hold its Bluetooth button until \"-P-\" blinks on the display, then try connecting again.",
+            .hindi: "यह ओमरॉन कफ अभी पेयर नहीं हुआ है। डिस्प्ले पर \"-P-\" चमकने तक इसका ब्लूटूथ बटन दबाए रखें, फिर फिर से कनेक्ट करने का प्रयास करें।",
+            .telugu: "ఈ ఓమ్రాన్ కఫ్ ఇంకా పెయిర్ కాలేదు. డిస్‌ప్లేలో \"-P-\" బ్లింక్ అయ్యే వరకు దాని బ్లూటూత్ బటన్‌ను నొక్కి ఉంచి, మళ్లీ కనెక్ట్ చేయడానికి ప్రయత్నించండి.",
+            .kannada: "ಈ ಓಮ್ರಾನ್ ಕಫ್ ಇನ್ನೂ ಜೋಡಿಯಾಗಿಲ್ಲ. ಪ್ರದರ್ಶನದಲ್ಲಿ \"-P-\" ಮಿಂಚುವವರೆಗೆ ಅದರ ಬ್ಲೂಟೂತ್ ಬಟನ್ ಒತ್ತಿ ಹಿಡಿಯಿರಿ, ನಂತರ ಮತ್ತೆ ಸಂಪರ್ಕಿಸಲು ಪ್ರಯತ್ನಿಸಿ.",
+            .tamil: "இந்த ஓம்ரான் கஃப் இன்னும் இணைக்கப்படவில்லை. காட்சியில் \"-P-\" ஒளிரும் வரை அதன் புளூடூத் பொத்தானை அழுத்திப் பிடித்து, பின்னர் மீண்டும் இணைக்க முயற்சிக்கவும்.",
+        ],
+        "omron_error_missing_characteristics": [
+            .english: "Expected Omron characteristics weren't found on this device.",
+            .hindi: "इस डिवाइस पर अपेक्षित ओमरॉन विशेषताएं नहीं मिलीं।",
+            .telugu: "ఈ పరికరంపై ఆశించిన ఓమ్రాన్ లక్షణాలు కనుగొనబడలేదు.",
+            .kannada: "ಈ ಸಾಧನದಲ್ಲಿ ನಿರೀಕ್ಷಿತ ಓಮ್ರಾನ್ ಗುಣಲಕ್ಷಣಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
+            .tamil: "இந்த சாதனத்தில் எதிர்பார்க்கப்பட்ட ஓம்ரான் பண்புகள் கண்டறியப்படவில்லை.",
+        ],
+        "omron_progress_discovering": [
+            .english: "Discovering Omron characteristics…",
+            .hindi: "ओमरॉन विशेषताओं की खोज हो रही है…",
+            .telugu: "ఓమ్రాన్ లక్షణాలను కనుగొంటోంది…",
+            .kannada: "ಓಮ್ರಾನ್ ಗುಣಲಕ್ಷಣಗಳನ್ನು ಶೋಧಿಸಲಾಗುತ್ತಿದೆ…",
+            .tamil: "ஓம்ரான் பண்புகளைக் கண்டறிகிறது…",
+        ],
+        "omron_progress_enabling_notifications": [
+            .english: "Enabling notifications…",
+            .hindi: "सूचनाएं सक्षम की जा रही हैं…",
+            .telugu: "నోటిఫికేషన్‌లను ఎనేబుల్ చేస్తోంది…",
+            .kannada: "ಅಧಿಸೂಚನೆಗಳನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲಾಗುತ್ತಿದೆ…",
+            .tamil: "அறிவிப்புகளை இயக்குகிறது…",
+        ],
+        "omron_progress_unlocking": [
+            .english: "Unlocking…", .hindi: "अनलॉक हो रहा है…", .telugu: "అన్‌లాక్ చేస్తోంది…", .kannada: "ಅನ್ಲಾಕ್ ಆಗುತ್ತಿದೆ…", .tamil: "திறக்கப்படுகிறது…",
+        ],
+        "omron_progress_starting_transfer": [
+            .english: "Starting data transfer…",
+            .hindi: "डेटा ट्रांसफर शुरू हो रहा है…",
+            .telugu: "డేటా బదిలీ ప్రారంభమవుతోంది…",
+            .kannada: "ಡೇಟಾ ವರ್ಗಾವಣೆ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…",
+            .tamil: "தரவு பரிமாற்றம் தொடங்குகிறது…",
+        ],
+        "omron_progress_reading_latest": [
+            .english: "Reading latest reading…",
+            .hindi: "नवीनतम रीडिंग पढ़ी जा रही है…",
+            .telugu: "తాజా రీడింగ్ చదవబడుతోంది…",
+            .kannada: "ಇತ್ತೀಚಿನ ವಾಚನವನ್ನು ಓದಲಾಗುತ್ತಿದೆ…",
+            .tamil: "சமீபத்திய அளவீடு படிக்கப்படுகிறது…",
+        ],
+        "omron_progress_finishing": [
+            .english: "Finishing…", .hindi: "पूर्ण हो रहा है…", .telugu: "పూర్తవుతోంది…", .kannada: "ಪೂರ್ಣಗೊಳ್ಳುತ್ತಿದೆ…", .tamil: "முடிக்கப்படுகிறது…",
+        ],
+        "omron_progress_no_recent_reading": [
+            .english: "Couldn't confirm a reading from the last few minutes.",
+            .hindi: "पिछले कुछ मिनटों की रीडिंग की पुष्टि नहीं हो सकी।",
+            .telugu: "గత కొన్ని నిమిషాల రీడింగ్‌ను నిర్ధారించలేకపోయింది.",
+            .kannada: "ಕಳೆದ ಕೆಲವು ನಿಮಿಷಗಳ ವಾಚನವನ್ನು ದೃಢೀಕರಿಸಲಾಗಲಿಲ್ಲ.",
+            .tamil: "கடந்த சில நிமிடங்களின் அளவீட்டை உறுதிப்படுத்த முடியவில்லை.",
+        ],
+        "omron_progress_pairing": [
+            .english: "Not paired yet — hold the cuff's Bluetooth button until \"-P-\" shows, pairing…",
+            .hindi: "अभी तक पेयर नहीं हुआ — \"-P-\" दिखने तक कफ का ब्लूटूथ बटन दबाए रखें, पेयरिंग हो रही है…",
+            .telugu: "ఇంకా పెయిర్ కాలేదు — \"-P-\" చూపే వరకు కఫ్ బ్లూటూత్ బటన్‌ను నొక్కి ఉంచండి, పెయిరింగ్ జరుగుతోంది…",
+            .kannada: "ಇನ್ನೂ ಜೋಡಿಯಾಗಿಲ್ಲ — \"-P-\" ತೋರುವವರೆಗೆ ಕಫ್‌ನ ಬ್ಲೂಟೂತ್ ಬಟನ್ ಒತ್ತಿ ಹಿಡಿಯಿರಿ, ಜೋಡಣೆಯಾಗುತ್ತಿದೆ…",
+            .tamil: "இன்னும் இணைக்கப்படவில்லை — \"-P-\" காட்டும் வரை கஃப்பின் புளூடூத் பொத்தானை அழுத்திப் பிடியுங்கள், இணைக்கிறது…",
+        ],
+        "omron_progress_paired_unlocking": [
+            .english: "Paired — unlocking…",
+            .hindi: "पेयर हो गया — अनलॉक हो रहा है…",
+            .telugu: "పెయిర్ అయింది — అన్‌లాక్ చేస్తోంది…",
+            .kannada: "ಜೋಡಣೆಯಾಗಿದೆ — ಅನ್ಲಾಕ್ ಆಗುತ್ತಿದೆ…",
+            .tamil: "இணைக்கப்பட்டது — திறக்கப்படுகிறது…",
+        ],
+        "omron_progress_waiting_pairing_mode": [
+            .english: "Waiting for pairing mode (attempt %d of 10)…",
+            .hindi: "पेयरिंग मोड की प्रतीक्षा (प्रयास %d/10)…",
+            .telugu: "పెయిరింగ్ మోడ్ కోసం వేచి ఉంది (ప్రయత్నం %d/10)…",
+            .kannada: "ಜೋಡಣೆ ಮೋಡ್‌ಗಾಗಿ ಕಾಯುತ್ತಿದೆ (ಪ್ರಯತ್ನ %d/10)…",
+            .tamil: "இணைவு பயன்முறைக்காக காத்திருக்கிறது (முயற்சி %d/10)…",
+        ],
+        "omron_progress_connecting": [
+            .english: "Connecting…", .hindi: "कनेक्ट हो रहा है…", .telugu: "కనెక్ట్ చేస్తోంది…", .kannada: "ಸಂಪರ್ಕಿಸುತ್ತಿದೆ…", .tamil: "இணைக்கிறது…",
         ],
     ]
 }
