@@ -1,11 +1,129 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Info, User, Bell, AlertTriangle, Check } from 'lucide-react';
+import { Info, User, Bell, AlertTriangle, Check, KeyRound, Copy, RefreshCw } from 'lucide-react';
+
+interface ClinicJoinCode {
+  id: string;
+  name: string;
+  join_code: string | null;
+}
+
+/// Unlike the rest of this page, this card is wired for real — it reads
+/// and rotates the actual join_code column via
+/// /api/clinic/join-code (see supabase/migrations/0005_clinic_join_codes.sql).
+/// A patient enters this code during iOS onboarding to resolve which
+/// clinic they're joining; it's the gate that keeps App Store signups
+/// limited to patients an actual clinic gave the code to.
+function ClinicJoinCodeCard() {
+  const [clinics, setClinics] = useState<ClinicJoinCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [rotatingId, setRotatingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const fetchCodes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/clinic/join-code');
+      if (!res.ok) return;
+      const data = await res.json();
+      setClinics(data.clinics ?? []);
+    } catch {
+      // leave whatever was already shown
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCodes();
+  }, [fetchCodes]);
+
+  async function handleRotate(clinicId: string) {
+    if (!window.confirm('Generate a new code for this clinic? The current code will stop working immediately.')) return;
+    setRotatingId(clinicId);
+    try {
+      const res = await fetch('/api/clinic/join-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clinicId }),
+      });
+      if (res.ok) {
+        await fetchCodes();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error || 'Failed to generate a new code.');
+      }
+    } catch {
+      alert('Failed to generate a new code — check your connection.');
+    } finally {
+      setRotatingId(null);
+    }
+  }
+
+  function handleCopy(clinicId: string, code: string) {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedId(clinicId);
+      setTimeout(() => setCopiedId(null), 1500);
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-gray-500" />
+          <h2 className="text-base font-semibold text-gray-900">Clinic Join Code</h2>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-gray-400 mb-4">
+          Give this code to patients you&apos;ve certified for the pilot — they enter it once during account setup in the Nivara app. Rotating it immediately invalidates the old code.
+        </p>
+        {loading ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : clinics.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">No clinic associated with this account.</p>
+        ) : (
+          <div className="space-y-3">
+            {clinics.map((clinic) => (
+              <div key={clinic.id} className="flex items-center justify-between gap-3 flex-wrap rounded-lg border border-gray-100 px-3 py-2.5">
+                <div>
+                  {clinics.length > 1 && <p className="text-xs text-gray-400">{clinic.name}</p>}
+                  <p className="font-mono text-base font-semibold tracking-wide text-gray-900">
+                    {clinic.join_code ?? '—'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {clinic.join_code && (
+                    <button
+                      onClick={() => handleCopy(clinic.id, clinic.join_code!)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-[#1e3a5f] border border-gray-200 rounded-lg transition-colors"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copiedId === clinic.id ? 'Copied' : 'Copy'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleRotate(clinic.id)}
+                    disabled={rotatingId === clinic.id}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-[#1e3a5f] border border-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${rotatingId === clinic.id ? 'animate-spin' : ''}`} />
+                    {clinic.join_code ? 'Regenerate' : 'Generate'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
@@ -103,6 +221,8 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <ClinicJoinCodeCard />
 
           {/* Notifications */}
           <Card>

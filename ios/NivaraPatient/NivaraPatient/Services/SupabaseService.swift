@@ -38,22 +38,30 @@ enum SupabaseService {
         return session.user.id
     }
 
-    /// Lists every clinic for the onboarding clinic picker (see
-    /// OnboardingBasicInfoView). `clinics` is readable by any authenticated
-    /// session, patient or staff (see
-    /// supabase/migrations/0003_clinics_and_staff.sql) — this still calls
-    /// `ensureSignedIn()` first since the anonymous session has to exist
-    /// before any Data API call succeeds. Returns [] on any failure
-    /// (not configured, no network, etc.) so the picker can just hide
-    /// itself rather than block onboarding.
-    static func fetchClinics() async -> [Clinic] {
-        guard let client else { return [] }
+    /// Resolves the join code a patient types in during onboarding (see
+    /// OnboardingBasicInfoView) to a clinic. `clinics.join_code` is
+    /// deliberately not selectable directly — this calls a SECURITY
+    /// DEFINER Postgres function instead (see
+    /// supabase/migrations/0005_clinic_join_codes.sql), which is the only
+    /// path that can turn a code into a clinic id without the code itself
+    /// ever being readable by a patient's anon session. Returns nil if the
+    /// code is blank, matches no clinic, or Supabase is unreachable/not
+    /// configured.
+    static func resolveClinic(byJoinCode code: String) async -> Clinic? {
+        guard let client else { return nil }
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
         do {
             _ = try await ensureSignedIn()
-            return try await client.from("clinics").select("id, name").order("name").execute().value
+            struct Params: Encodable { let code: String }
+            let rows: [Clinic] = try await client
+                .rpc("resolve_clinic_by_join_code", params: Params(code: trimmed))
+                .execute()
+                .value
+            return rows.first
         } catch {
-            print("SupabaseService.fetchClinics failed (continuing without clinic list): \(error)")
-            return []
+            print("SupabaseService.resolveClinic failed: \(error)")
+            return nil
         }
     }
 

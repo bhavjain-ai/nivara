@@ -8,19 +8,25 @@ struct OnboardingBasicInfoView: View {
     let onNext: () -> Void
     let onBack: () -> Void
 
-    // Fetched once when this screen appears (see SupabaseService.fetchClinics).
-    // Empty if Supabase isn't configured, there's no network, or there are
-    // simply no clinics yet — the picker then just doesn't show, matching
-    // this app's "never block onboarding on a backend issue" philosophy.
-    // When the list DOES load, picking one is required: silently leaving a
-    // real patient unassigned to any clinic is the thing clinic isolation
-    // (see supabase/migrations/0003_clinics_and_staff.sql) exists to avoid.
-    @State private var clinics: [Clinic] = []
+    // The patient types their clinic's join code here; it's resolved to a
+    // clinic id via SupabaseService.resolveClinic(byJoinCode:) rather than
+    // picked from a browsable list — see
+    // supabase/migrations/0005_clinic_join_codes.sql. This is the actual
+    // access gate (an App Store download alone shouldn't be enough to
+    // register as a patient), so unlike the old picker, this blocks
+    // "Next" until a code resolves successfully — UNLESS Supabase isn't
+    // configured at all, which still falls back to no gate so local/demo
+    // builds without a backend keep working for development.
+    @State private var joinCode: String = ""
+    @State private var resolvedClinic: Clinic?
+    @State private var isResolving = false
+    @State private var codeWasInvalid = false
+    @State private var resolveTask: Task<Void, Never>?
 
     private var canContinue: Bool {
         let namesValid = !onboarding.firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
             !onboarding.lastName.trimmingCharacters(in: .whitespaces).isEmpty
-        let clinicValid = clinics.isEmpty || onboarding.selectedClinicId != nil
+        let clinicValid = !SupabaseConfig.isConfigured || resolvedClinic != nil
         return namesValid && clinicValid
     }
 
@@ -58,29 +64,81 @@ struct OnboardingBasicInfoView: View {
                     .datePickerStyle(.compact)
                     .labelsHidden()
                 }
-                if !clinics.isEmpty {
-                    labeledField(onboarding.t("basicinfo_clinic")) {
-                        Picker(
-                            onboarding.t("basicinfo_clinic"),
-                            selection: Binding(
-                                get: { onboarding.selectedClinicId },
-                                set: { onboarding.selectedClinicId = $0 }
-                            )
-                        ) {
-                            Text(onboarding.t("basicinfo_select_clinic")).tag(UUID?.none)
-                            ForEach(clinics) { clinic in
-                                Text(clinic.name).tag(Optional(clinic.id))
-                            }
+                if SupabaseConfig.isConfigured {
+                    VStack(alignment: .leading, spacing: 6) {
+                        labeledField(onboarding.t("basicinfo_clinic_code")) {
+                            TextField(onboarding.t("basicinfo_clinic_code_placeholder"), text: $joinCode)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .onChange(of: joinCode) { newValue in
+                                    scheduleResolve(for: newValue)
+                                }
                         }
-                        .labelsHidden()
+                        clinicCodeStatus
                     }
                 }
             }
         } footer: {
             OnboardingPrimaryButton(title: onboarding.t("common_next"), enabled: canContinue, action: onNext)
         }
-        .task {
-            clinics = await SupabaseService.fetchClinics()
+    }
+
+    @ViewBuilder
+    private var clinicCodeStatus: some View {
+        if isResolving {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text(onboarding.t("basicinfo_clinic_checking"))
+                    .font(.caption2)
+                    .foregroundStyle(NivaraColor.textSecondary)
+            }
+        } else if let resolvedClinic {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(NivaraColor.forestGreen)
+                Text(onboarding.t("basicinfo_clinic_confirmed", resolvedClinic.name))
+                    .font(.caption2)
+                    .foregroundStyle(NivaraColor.forestGreen)
+            }
+        } else if codeWasInvalid {
+            HStack(spacing: 6) {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(NivaraColor.critical)
+                Text(onboarding.t("basicinfo_clinic_invalid"))
+                    .font(.caption2)
+                    .foregroundStyle(NivaraColor.critical)
+            }
+        }
+    }
+
+    /// Debounces resolution so every keystroke doesn't fire a network call
+    /// — cancels any in-flight attempt and waits briefly for typing to
+    /// pause first. A stale response can never land after a newer one
+    /// starts: `resolveTask` is overwritten before the old task's
+    /// `Task.isCancelled` check even runs.
+    private func scheduleResolve(for newValue: String) {
+        resolveTask?.cancel()
+        resolvedClinic = nil
+        codeWasInvalid = false
+        onboarding.selectedClinicId = nil
+
+        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            isResolving = false
+            return
+        }
+
+        isResolving = true
+        resolveTask = Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            let clinic = await SupabaseService.resolveClinic(byJoinCode: trimmed)
+            guard !Task.isCancelled else { return }
+            isResolving = false
+            if let clinic {
+                resolvedClinic = clinic
+                onboarding.selectedClinicId = clinic.id
+            } else {
+                codeWasInvalid = true
+            }
         }
     }
 
