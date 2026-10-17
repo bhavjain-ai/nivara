@@ -106,6 +106,11 @@ struct ChatMessage: Codable, Identifiable, Equatable {
 /// The payload for a new outgoing patient message (no id/created_at — the
 /// database assigns those).
 struct NewChatMessage: Encodable {
+    /// Generated client-side (rather than left to the table's own
+    /// `gen_random_uuid()` default) so ChatViewModel.send() can show this
+    /// message optimistically under the same id it'll come back with over
+    /// Realtime — see that method's doc comment.
+    let id: UUID
     let patientId: UUID
     let coordinatorRole: String
     let senderType: String
@@ -113,6 +118,7 @@ struct NewChatMessage: Encodable {
     let body: String
 
     enum CodingKeys: String, CodingKey {
+        case id
         case patientId = "patient_id"
         case coordinatorRole = "coordinator_role"
         case senderType = "sender_type"
@@ -256,6 +262,13 @@ enum SupabaseDate {
 
     static func parse(_ string: String) -> Date? {
         withFractionalSeconds.date(from: string) ?? plain.date(from: string)
+    }
+
+    /// Current time formatted the same way `parse(_:)` reads — used to build
+    /// a locally-timestamped row (e.g. ChatViewModel's optimistic send)
+    /// without waiting on a round trip to read back the server's timestamp.
+    static func nowString() -> String {
+        withFractionalSeconds.string(from: Date())
     }
 
     /// For Postgres `date` columns (e.g. medications.start_date,

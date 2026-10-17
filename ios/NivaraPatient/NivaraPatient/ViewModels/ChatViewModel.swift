@@ -47,15 +47,40 @@ final class ChatViewModel: ObservableObject {
         realtimeTask = nil
     }
 
+    /// Appends the sent message to `messages` immediately rather than
+    /// waiting for it to come back over the Realtime subscription — that
+    /// round trip isn't instant, and depending on it alone meant a patient
+    /// who just sent something briefly (or indefinitely, if the socket
+    /// hiccups) saw it simply vanish after the composer cleared. The id is
+    /// generated here rather than left to the table default specifically so
+    /// this optimistic row and the later Realtime echo of the same insert
+    /// share one id — subscribeToNewMessages's existing dedup check
+    /// (`messages.contains(where: { $0.id == message.id })`) then quietly
+    /// drops the echo instead of appending a second copy.
     func send() async {
         guard let client = SupabaseService.client, let patientId else { return }
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         draft = ""
+
+        let messageId = UUID()
+        let optimisticMessage = ChatMessage(
+            id: messageId,
+            patientId: patientId,
+            coordinatorRole: role.rawValue,
+            senderType: "patient",
+            senderName: "You",
+            body: text,
+            readAt: nil,
+            createdAt: SupabaseDate.nowString()
+        )
+        messages.append(optimisticMessage)
+
         do {
             try await client
                 .from("messages")
                 .insert(NewChatMessage(
+                    id: messageId,
                     patientId: patientId,
                     coordinatorRole: role.rawValue,
                     senderType: "patient",
@@ -65,6 +90,7 @@ final class ChatViewModel: ObservableObject {
                 .execute()
         } catch {
             print("ChatViewModel.send failed: \(error)")
+            messages.removeAll { $0.id == messageId }
             draft = text // don't lose what they typed
         }
     }
