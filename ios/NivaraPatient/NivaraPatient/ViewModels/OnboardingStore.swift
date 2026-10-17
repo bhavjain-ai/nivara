@@ -25,12 +25,10 @@ final class OnboardingStore: ObservableObject {
     @Published var dateOfBirth: Date? {
         didSet { defaults.set(dateOfBirth, forKey: Keys.dateOfBirth) }
     }
-    /// Which clinic this patient picked during onboarding (see
-    /// OnboardingBasicInfoView's clinic picker, fed by
-    /// SupabaseService.fetchClinics). Nil if no clinic was available to pick
-    /// from, or none was selected — registerPatient then leaves
-    /// patients.clinic_id null, same as patients registered before clinics
-    /// existed.
+    /// Which clinic this patient's join code resolved to during onboarding
+    /// (see OnboardingBasicInfoView, SupabaseService.resolveClinic). Nil if
+    /// Supabase isn't configured or no code has resolved yet —
+    /// registerPatient then leaves patients.clinic_id null.
     @Published var selectedClinicId: UUID? {
         didSet { defaults.set(selectedClinicId?.uuidString, forKey: Keys.selectedClinicId) }
     }

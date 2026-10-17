@@ -664,11 +664,24 @@ enum Translations {
         "basicinfo_date_of_birth": [
             .english: "Date of birth", .hindi: "जन्म तिथि", .telugu: "పుట్టిన తేదీ", .kannada: "ಹುಟ್ಟಿದ ದಿನಾಂಕ", .tamil: "பிறந்த தேதி",
         ],
-        "basicinfo_clinic": [
-            .english: "Clinic", .hindi: "क्लिनिक", .telugu: "క్లినిక్", .kannada: "ಕ್ಲಿನಿಕ್", .tamil: "மருத்துவமனை",
+        "basicinfo_clinic_code": [
+            .english: "Clinic join code", .hindi: "क्लिनिक जॉइन कोड", .telugu: "క్లినిక్ జాయిన్ కోడ్", .kannada: "ಕ್ಲಿನಿಕ್ ಜಾಯಿನ್ ಕೋಡ್", .tamil: "மருத்துவமனை இணைவுக் குறியீடு",
         ],
-        "basicinfo_select_clinic": [
-            .english: "Select a clinic", .hindi: "एक क्लिनिक चुनें", .telugu: "ఒక క్లినిక్‌ను ఎంచుకోండి", .kannada: "ಒಂದು ಕ್ಲಿನಿಕ್ ಆಯ್ಕೆಮಾಡಿ", .tamil: "ஒரு மருத்துவமனையைத் தேர்ந்தெடுக்கவும்",
+        "basicinfo_clinic_code_placeholder": [
+            .english: "Enter the code your clinic gave you", .hindi: "आपके क्लिनिक द्वारा दिया गया कोड दर्ज करें", .telugu: "మీ క్లినిక్ ఇచ్చిన కోడ్‌ను నమోదు చేయండి", .kannada: "ನಿಮ್ಮ ಕ್ಲಿನಿಕ್ ನೀಡಿದ ಕೋಡ್ ಅನ್ನು ನಮೂದಿಸಿ", .tamil: "உங்கள் மருத்துவமனை கொடுத்த குறியீட்டை உள்ளிடவும்",
+        ],
+        "basicinfo_clinic_checking": [
+            .english: "Checking…", .hindi: "जाँच हो रही है…", .telugu: "తనిఖీ చేస్తోంది…", .kannada: "ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…", .tamil: "சரிபார்க்கிறது…",
+        ],
+        "basicinfo_clinic_confirmed": [
+            .english: "Joining %@", .hindi: "%@ में शामिल हो रहे हैं", .telugu: "%@లో చేరుతున్నారు", .kannada: "%@ ಗೆ ಸೇರುತ್ತಿದ್ದೀರಿ", .tamil: "%@ இல் சேர்கிறீர்கள்",
+        ],
+        "basicinfo_clinic_invalid": [
+            .english: "That code doesn't match any clinic — check with your clinic and try again.",
+            .hindi: "यह कोड किसी क्लिनिक से मेल नहीं खाता — अपने क्लिनिक से जाँच करें और फिर से प्रयास करें।",
+            .telugu: "ఆ కోడ్ ఏ క్లినిక్‌తోనూ సరిపోలలేదు — మీ క్లినిక్‌తో తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
+            .kannada: "ಆ ಕೋಡ್ ಯಾವುದೇ ಕ್ಲಿನಿಕ್‌ಗೆ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ — ನಿಮ್ಮ ಕ್ಲಿನಿಕ್‌ನೊಂದಿಗೆ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+            .tamil: "அந்த குறியீடு எந்த மருத்துவமனையுடனும் பொருந்தவில்லை — உங்கள் மருத்துவமனையுடன் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.",
         ],
 
         // MARK: - Consent
