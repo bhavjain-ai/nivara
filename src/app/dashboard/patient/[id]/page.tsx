@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { VitalsCards } from '@/components/patient/VitalsCards';
@@ -40,8 +40,7 @@ export default function PatientDetailPage({ params }: PageProps) {
   const [patient, setPatient] = useState<Patient | null>(basePatient ?? null);
   const [hasLiveData, setHasLiveData] = useState(false);
 
-  useEffect(() => {
-    async function fetchLive() {
+  const fetchLive = useCallback(async () => {
       try {
         const res = await fetch('/api/patients/live');
         if (!res.ok) return;
@@ -89,7 +88,7 @@ export default function PatientDetailPage({ params }: PageProps) {
             diabetesStep: conditions.includes('Diabetes') ? 'metformin' : null,
             hba1cTier: null,
             hba1cReadings: [],
-            medications: [],
+            medications: liveRecord.medications ?? [],
             alerts: [],
             alertStatus: liveRecord.alertStatus as AlertStatus,
             lastReadingTime: liveRecord.lastReadingTime,
@@ -104,11 +103,13 @@ export default function PatientDetailPage({ params }: PageProps) {
       } catch {
         // keep showing mock/null patient
       }
-    }
+  }, [id, basePatient, staff.clinicName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     fetchLive();
     const interval = setInterval(fetchLive, 30_000);
     return () => clearInterval(interval);
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchLive]);
 
   if (!patient) {
     return (
@@ -255,7 +256,7 @@ export default function PatientDetailPage({ params }: PageProps) {
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
               Medications &amp; Titration Ladder
             </h2>
-            <MedicationPanel patient={patient} />
+            <MedicationPanel patient={patient} isLive={hasLiveData} onSaved={fetchLive} />
           </section>
 
           {/* Vitals Charts */}

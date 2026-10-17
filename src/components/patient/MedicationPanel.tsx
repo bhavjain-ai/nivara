@@ -1,13 +1,24 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Patient, Medication } from '@/types';
 import { getEscalationRecommendation } from '@/lib/htn-titration';
 import { getDiabetesEscalationRecommendation } from '@/lib/diabetes-titration';
-import { AlertTriangle, ShieldAlert, Info, BookOpen, Pill, Clock, Syringe } from 'lucide-react';
+import { DIABETES_DRUG_CLASSES } from '@/lib/medication-classify';
+import { AlertTriangle, ShieldAlert, Info, BookOpen, Pill, Clock, Syringe, Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 
 interface MedicationPanelProps {
   patient: Patient;
+  /** True for a real (Supabase-backed) patient — edits call the API and
+   * persist. False (or omitted, for backward compat) for a mock/demo
+   * patient — edits only update local component state, explained in the UI. */
+  isLive?: boolean;
+  /** Called after a successful live save/delete so the parent can refetch
+   * and pass back the server's version of this patient's medications. */
+  onSaved?: () => void;
 }
+
+const HTN_DRUG_CLASSES = ['ACE', 'ARB', 'CCB', 'Diuretic', 'BetaBlocker', 'MRA', 'AlphaBlocker', 'Central', 'ARNI', 'Other'];
 
 const drugClassColors: Record<string, string> = {
   ACE: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -50,38 +61,234 @@ const reasonLabels: Record<string, string> = {
   consecutive_elevated: 'consecutive elevated readings above target',
 };
 
-function MedTable({ meds }: { meds: Medication[] }) {
-  if (meds.length === 0) return <p className="text-sm text-gray-400 italic">No medications recorded.</p>;
+interface MedFormInput {
+  name: string;
+  drugClass: string;
+  dose: string;
+  frequency: string;
+  startDate: string;
+  description: string;
+}
+
+function emptyMedForm(defaultClass: string): MedFormInput {
+  return { name: '', drugClass: defaultClass, dose: '', frequency: '', startDate: new Date().toISOString().split('T')[0], description: '' };
+}
+
+function MedFormRow({
+  form,
+  setForm,
+  drugClassOptions,
+  saving,
+  onCancel,
+  onSubmit,
+}: {
+  form: MedFormInput;
+  setForm: (f: MedFormInput) => void;
+  drugClassOptions: string[];
+  saving: boolean;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-100">
-            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Medication</th>
-            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Class</th>
-            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Dose</th>
-            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Frequency</th>
-            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2">Since</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {meds.map((med: Medication, idx: number) => (
-            <tr key={idx} className="hover:bg-gray-50/60 transition-colors">
-              <td className="py-2.5 pr-4 font-medium text-gray-900">{med.name}</td>
-              <td className="py-2.5 pr-4">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${drugClassColors[med.drugClass] ?? drugClassColors.Other}`}>
-                  {med.drugClass}
-                </span>
-              </td>
-              <td className="py-2.5 pr-4 text-gray-700">{med.dose}</td>
-              <td className="py-2.5 pr-4 text-gray-600">{med.frequency}</td>
-              <td className="py-2.5 text-gray-400 text-xs">
-                {new Date(med.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </td>
-            </tr>
+    <tr className="bg-blue-50/40">
+      <td className="py-2 pr-2">
+        <input
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Name"
+          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+        />
+      </td>
+      <td className="py-2 pr-2">
+        <select
+          value={form.drugClass}
+          onChange={(e) => setForm({ ...form, drugClass: e.target.value })}
+          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+        >
+          {drugClassOptions.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
-        </tbody>
-      </table>
+        </select>
+      </td>
+      <td className="py-2 pr-2">
+        <input
+          value={form.dose}
+          onChange={(e) => setForm({ ...form, dose: e.target.value })}
+          placeholder="Dose"
+          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+        />
+      </td>
+      <td className="py-2 pr-2">
+        <input
+          value={form.frequency}
+          onChange={(e) => setForm({ ...form, frequency: e.target.value })}
+          placeholder="Frequency"
+          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+        />
+      </td>
+      <td className="py-2 pr-2">
+        <input
+          type="date"
+          value={form.startDate}
+          onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+          className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+        />
+      </td>
+      <td className="py-2">
+        <div className="flex items-center gap-1">
+          <button onClick={onSubmit} disabled={saving} className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50" aria-label="Save">
+            <Check className="w-4 h-4" />
+          </button>
+          <button onClick={onCancel} disabled={saving} className="p-1 text-gray-400 hover:bg-gray-100 rounded disabled:opacity-50" aria-label="Cancel">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function EditableMedTable({
+  meds,
+  drugClassOptions,
+  isLive,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  meds: Medication[];
+  drugClassOptions: string[];
+  isLive: boolean;
+  onAdd: (input: MedFormInput) => Promise<void> | void;
+  onEdit: (id: string, input: MedFormInput) => Promise<void> | void;
+  onDelete: (med: Medication) => Promise<void> | void;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<MedFormInput>(emptyMedForm(drugClassOptions[0]));
+  const [adding, setAdding] = useState(false);
+  const [addForm, setAddForm] = useState<MedFormInput>(emptyMedForm(drugClassOptions[0]));
+  const [saving, setSaving] = useState(false);
+
+  function startEdit(med: Medication) {
+    setEditingId(med.id ?? med.name);
+    setEditForm({
+      name: med.name,
+      drugClass: med.drugClass,
+      dose: med.dose,
+      frequency: med.frequency,
+      startDate: med.startDate.split('T')[0],
+      description: '',
+    });
+  }
+
+  async function submitEdit() {
+    if (!editingId) return;
+    setSaving(true);
+    await onEdit(editingId, editForm);
+    setSaving(false);
+    setEditingId(null);
+  }
+
+  async function submitAdd() {
+    if (!addForm.name.trim() || !addForm.dose.trim() || !addForm.frequency.trim()) return;
+    setSaving(true);
+    await onAdd(addForm);
+    setSaving(false);
+    setAdding(false);
+    setAddForm(emptyMedForm(drugClassOptions[0]));
+  }
+
+  async function handleDeleteClick(med: Medication) {
+    if (!window.confirm(`Discontinue ${med.name}?`)) return;
+    await onDelete(med);
+  }
+
+  return (
+    <div>
+      {meds.length === 0 && !adding && <p className="text-sm text-gray-400 italic mb-2">No medications recorded.</p>}
+      {(meds.length > 0 || adding) && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Medication</th>
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Class</th>
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Dose</th>
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Frequency</th>
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2 pr-4">Since</th>
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {meds.map((med) => {
+                const rowId = med.id ?? med.name;
+                if (editingId === rowId) {
+                  return (
+                    <MedFormRow
+                      key={rowId}
+                      form={editForm}
+                      setForm={setEditForm}
+                      drugClassOptions={drugClassOptions}
+                      saving={saving}
+                      onCancel={() => setEditingId(null)}
+                      onSubmit={submitEdit}
+                    />
+                  );
+                }
+                return (
+                  <tr key={rowId} className="hover:bg-gray-50/60 transition-colors group">
+                    <td className="py-2.5 pr-4 font-medium text-gray-900">{med.name}</td>
+                    <td className="py-2.5 pr-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${drugClassColors[med.drugClass] ?? drugClassColors.Other}`}>
+                        {med.drugClass}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4 text-gray-700">{med.dose}</td>
+                    <td className="py-2.5 pr-4 text-gray-600">{med.frequency}</td>
+                    <td className="py-2.5 pr-4 text-gray-400 text-xs">
+                      {new Date(med.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="py-2.5">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => startEdit(med)} className="p-1 text-gray-400 hover:text-[#1e3a5f] rounded" aria-label="Edit">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDeleteClick(med)} className="p-1 text-gray-400 hover:text-red-600 rounded" aria-label="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {adding && (
+                <MedFormRow
+                  form={addForm}
+                  setForm={setAddForm}
+                  drugClassOptions={drugClassOptions}
+                  saving={saving}
+                  onCancel={() => setAdding(false)}
+                  onSubmit={submitAdd}
+                />
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!adding && (
+        <button
+          onClick={() => {
+            setAddForm(emptyMedForm(drugClassOptions[0]));
+            setAdding(true);
+          }}
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[#1e3a5f] hover:underline"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add medication
+        </button>
+      )}
+      {!isLive && (meds.length > 0 || adding) && (
+        <p className="mt-2 text-xs text-gray-400 italic">Demo patient — changes here are local to this browser tab only, not saved.</p>
+      )}
     </div>
   );
 }
@@ -95,7 +302,15 @@ function HoldBanner() {
   );
 }
 
-function HTNPanel({ patient }: { patient: Patient }) {
+interface ConditionPanelProps {
+  patient: Patient;
+  isLive: boolean;
+  onAdd: (input: MedFormInput) => Promise<void> | void;
+  onEdit: (id: string, input: MedFormInput) => Promise<void> | void;
+  onDelete: (med: Medication) => Promise<void> | void;
+}
+
+function HTNPanel({ patient, isLive, onAdd, onEdit, onDelete }: ConditionPanelProps) {
   const rec = getEscalationRecommendation(patient);
 
   return (
@@ -111,7 +326,14 @@ function HTNPanel({ patient }: { patient: Patient }) {
       </div>
 
       <div className="p-6 space-y-4">
-        <MedTable meds={patient.medications.filter((m) => !['Biguanide', 'SGLT2i', 'GLP1', 'DPP4i', 'Sulfonylurea', 'TZD', 'Insulin'].includes(m.drugClass))} />
+        <EditableMedTable
+          meds={patient.medications.filter((m) => !DIABETES_DRUG_CLASSES.includes(m.drugClass))}
+          drugClassOptions={HTN_DRUG_CLASSES}
+          isLive={isLive}
+          onAdd={onAdd}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
 
         {rec.onPostTitrationHold && <HoldBanner />}
 
@@ -235,7 +457,7 @@ function HTNPanel({ patient }: { patient: Patient }) {
   );
 }
 
-function DiabetesPanel({ patient }: { patient: Patient }) {
+function DiabetesPanel({ patient, isLive, onAdd, onEdit, onDelete }: ConditionPanelProps) {
   const rec = getDiabetesEscalationRecommendation(patient);
 
   return (
@@ -251,7 +473,14 @@ function DiabetesPanel({ patient }: { patient: Patient }) {
       </div>
 
       <div className="p-6 space-y-4">
-        <MedTable meds={patient.medications.filter((m) => ['Biguanide', 'SGLT2i', 'GLP1', 'DPP4i', 'Sulfonylurea', 'TZD', 'Insulin'].includes(m.drugClass))} />
+        <EditableMedTable
+          meds={patient.medications.filter((m) => DIABETES_DRUG_CLASSES.includes(m.drugClass))}
+          drugClassOptions={DIABETES_DRUG_CLASSES}
+          isLive={isLive}
+          onAdd={onAdd}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
 
         {patient.hba1cTier && (
           <div className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
@@ -332,11 +561,96 @@ function DiabetesPanel({ patient }: { patient: Patient }) {
   );
 }
 
-export function MedicationPanel({ patient }: MedicationPanelProps) {
+export function MedicationPanel({ patient, isLive = false, onSaved }: MedicationPanelProps) {
+  // Local draft of the medications list — for a live patient this is kept
+  // in sync with the server via `onSaved` triggering a parent refetch
+  // (patient.medications then updates, and the effect below picks it up).
+  // For a mock/demo patient, this IS the only copy: edits never leave the
+  // browser tab, there's nothing in Supabase to persist them to.
+  const [medications, setMedications] = useState<Medication[]>(
+    () => patient.medications.map((m, i) => ({ ...m, id: m.id ?? `mock-${i}` }))
+  );
+
+  useEffect(() => {
+    setMedications(patient.medications.map((m, i) => ({ ...m, id: m.id ?? `mock-${i}` })));
+  }, [patient.medications]);
+
+  async function handleAdd(input: MedFormInput) {
+    if (isLive) {
+      try {
+        const res = await fetch(`/api/patients/${patient.id}/medications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          alert(body.error || 'Failed to add medication.');
+          return;
+        }
+        onSaved?.();
+      } catch {
+        alert('Failed to add medication — check your connection.');
+      }
+      return;
+    }
+    setMedications((prev) => [...prev, { ...input, id: `local-${Date.now()}`, genericName: input.name } as Medication]);
+  }
+
+  async function handleEdit(id: string, input: MedFormInput) {
+    if (isLive) {
+      try {
+        const res = await fetch(`/api/patients/${patient.id}/medications/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          alert(body.error || 'Failed to update medication.');
+          return;
+        }
+        onSaved?.();
+      } catch {
+        alert('Failed to update medication — check your connection.');
+      }
+      return;
+    }
+    setMedications((prev) => prev.map((m) => (m.id === id ? ({ ...m, ...input, genericName: input.name } as Medication) : m)));
+  }
+
+  async function handleDelete(med: Medication) {
+    if (isLive && med.id) {
+      try {
+        const res = await fetch(`/api/patients/${patient.id}/medications/${med.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: `Discontinued ${med.name}` }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          alert(body.error || 'Failed to discontinue medication.');
+          return;
+        }
+        onSaved?.();
+      } catch {
+        alert('Failed to discontinue medication — check your connection.');
+      }
+      return;
+    }
+    setMedications((prev) => prev.filter((m) => m.id !== med.id));
+  }
+
+  const effectivePatient: Patient = { ...patient, medications };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-      {patient.conditions.includes('Hypertension') && <HTNPanel patient={patient} />}
-      {patient.conditions.includes('Diabetes') && <DiabetesPanel patient={patient} />}
+      {patient.conditions.includes('Hypertension') && (
+        <HTNPanel patient={effectivePatient} isLive={isLive} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} />
+      )}
+      {patient.conditions.includes('Diabetes') && (
+        <DiabetesPanel patient={effectivePatient} isLive={isLive} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} />
+      )}
     </div>
   );
 }

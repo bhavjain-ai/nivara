@@ -104,7 +104,16 @@ export async function GET() {
         physicianName: p.physicianName ?? 'Unassigned',
         enrollmentDate: p.enrollmentDate.split('T')[0],
         treatmentStep: 1,
-        medications: [],
+        medications: p.medications.map(m => ({
+          id: m.id,
+          name: m.name,
+          genericName: m.name, // not captured separately in the schema — unused in the UI, so this is a harmless default
+          drugClass: m.drugClass,
+          dose: m.dose,
+          frequency: m.frequency,
+          startDate: m.startDate,
+        })),
+        medicationHistory: p.medicationHistory,
         alerts: [],
         // BP-only, same scope as the flat-file path above — glucose-based
         // alerting isn't wired into this merge yet.

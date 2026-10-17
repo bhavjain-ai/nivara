@@ -184,6 +184,52 @@ enum SupabaseService {
             print("SupabaseService.pushGlucoseReading failed (continuing locally): \(error)")
         }
     }
+
+    /// Fetches the signed-in patient's current medications from Supabase —
+    /// the dashboard-edits-meds / iOS-reads-meds half of the sync (see
+    /// src/app/api/patients/[id]/medications/route.ts on the dashboard
+    /// side). RLS (medications_owner_read, supabase/migrations/0001_init.sql)
+    /// scopes this to the calling patient's own row automatically. Returns
+    /// [] on any failure — MedicationsView falls back to DemoPatientData in
+    /// that case, same "never block on a backend issue" philosophy as
+    /// everywhere else in this file.
+    static func fetchMedications() async -> [Medication] {
+        guard let client else { return [] }
+        do {
+            _ = try await ensureSignedIn()
+            let rows: [SupabaseMedicationRow] = try await client
+                .from("medications")
+                .select("id, name, drug_class, dose, frequency, start_date")
+                .order("start_date", ascending: false)
+                .execute()
+                .value
+            return rows.map { $0.toMedication() }
+        } catch {
+            print("SupabaseService.fetchMedications failed (continuing with demo data): \(error)")
+            return []
+        }
+    }
+
+    /// Fetches the signed-in patient's medication change history — shows up
+    /// in MedicationsView's "Recent Changes" card, which is how a dose/
+    /// regimen change made on the dashboard actually becomes visible to the
+    /// patient. See fetchMedications' doc comment for the failure philosophy.
+    static func fetchMedicationHistory() async -> [MedicationChange] {
+        guard let client else { return [] }
+        do {
+            _ = try await ensureSignedIn()
+            let rows: [SupabaseMedicationChangeRow] = try await client
+                .from("medication_changes")
+                .select("id, description, related_condition, changed_at")
+                .order("changed_at", ascending: false)
+                .execute()
+                .value
+            return rows.compactMap { $0.toMedicationChange() }
+        } catch {
+            print("SupabaseService.fetchMedicationHistory failed (continuing with demo data): \(error)")
+            return []
+        }
+    }
 }
 
 enum SupabaseServiceError: Error {

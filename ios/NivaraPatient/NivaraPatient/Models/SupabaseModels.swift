@@ -121,6 +121,66 @@ struct NewChatMessage: Encodable {
     }
 }
 
+/// A row from the `medications` table — see SupabaseService.fetchMedications.
+/// `startDate` is decoded as a raw string (Postgres `date`, "yyyy-MM-dd"),
+/// parsed via SupabaseDate.parseDateOnly, same reasoning as ChatMessage's
+/// string-decoded timestamps above.
+struct SupabaseMedicationRow: Decodable, Identifiable {
+    let id: UUID
+    let name: String
+    let drugClass: String
+    let dose: String
+    let frequency: String
+    let startDate: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case drugClass = "drug_class"
+        case dose, frequency
+        case startDate = "start_date"
+    }
+
+    func toMedication() -> Medication {
+        Medication(
+            id: id,
+            name: name,
+            drugClass: drugClass,
+            dose: dose,
+            frequency: frequency,
+            startDate: SupabaseDate.parseDateOnly(startDate) ?? Date()
+        )
+    }
+}
+
+/// A row from the `medication_changes` table — see
+/// SupabaseService.fetchMedicationHistory. This is what the dashboard's
+/// medication-edit API routes write to on every add/edit/delete (see
+/// src/app/api/patients/[id]/medications/route.ts), so fetching it here is
+/// how a doctor's dose/regimen change actually reaches the patient's "Recent
+/// Changes" card in MedicationsView.
+struct SupabaseMedicationChangeRow: Decodable, Identifiable {
+    let id: UUID
+    let description: String
+    let relatedCondition: String
+    let changedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, description
+        case relatedCondition = "related_condition"
+        case changedAt = "changed_at"
+    }
+
+    func toMedicationChange() -> MedicationChange? {
+        guard let condition = Condition(rawValue: relatedCondition) else { return nil }
+        return MedicationChange(
+            id: id,
+            date: SupabaseDate.parseDateOnly(changedAt) ?? Date(),
+            description: description,
+            relatedCondition: condition
+        )
+    }
+}
+
 /// New outgoing BP reading — see SupabaseService.pushBPReading. No id/
 /// created_at (database-assigned); recordedAt is the reading's own
 /// timestamp (device-reported or capture time), distinct from created_at
@@ -196,6 +256,13 @@ enum SupabaseDate {
 
     static func parse(_ string: String) -> Date? {
         withFractionalSeconds.date(from: string) ?? plain.date(from: string)
+    }
+
+    /// For Postgres `date` columns (e.g. medications.start_date,
+    /// medication_changes.changed_at) — "yyyy-MM-dd", no time component,
+    /// which `parse(_:)` above can't read (it expects a full timestamp).
+    static func parseDateOnly(_ string: String) -> Date? {
+        dateOnly.date(from: string)
     }
 
     /// yyyy-MM-dd, for Postgres `date` columns (e.g. date_of_birth).
