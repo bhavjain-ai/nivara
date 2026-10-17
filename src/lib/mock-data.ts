@@ -596,3 +596,9 @@ export function getRecentAlerts() {
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 10);
 }
+
+export function getAllAlerts() {
+  return mockPatients
+    .flatMap((p) => p.alerts)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
