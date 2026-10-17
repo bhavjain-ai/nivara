@@ -12,6 +12,7 @@ struct ConsentDocumentSheet: View {
     var onReachedBottom: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     var body: some View {
         NavigationStack {
@@ -41,7 +42,7 @@ struct ConsentDocumentSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(onboarding.t("common_done")) { dismiss() }
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
             }
@@ -50,10 +51,6 @@ struct ConsentDocumentSheet: View {
 }
 
 #Preview {
-<<<<<<< HEAD
-    ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle, sections: ConsentDocuments.informedConsentSections)
-=======
     ConsentDocumentSheet(title: ConsentDocuments.informedConsentTitle(for: .english), sections: ConsentDocuments.informedConsentSections(for: .english))
         .environmentObject(OnboardingStore())
->>>>>>> dd8c732 (Translate legal consent text, goal/role/tier display names, and BLE messages)
 }

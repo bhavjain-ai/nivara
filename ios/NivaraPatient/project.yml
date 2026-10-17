@@ -49,6 +49,10 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
         INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter."
         INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription: "Nivara uses Bluetooth to read live readings from your connected blood pressure cuff and glucose meter."
+        # Skips the "Export Compliance" question on every TestFlight upload.
+        # Accurate here: this app only uses encryption that iOS/HTTPS/Supabase
+        # already provide standard-exempt (no custom/proprietary crypto).
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "NO"
         # Fill in your personal team ID so `xcodegen generate` doesn't wipe
         # out signing every time it regenerates the .xcodeproj. Find it via
         # Xcode > Settings > Accounts > (your Apple ID) > your team, or after

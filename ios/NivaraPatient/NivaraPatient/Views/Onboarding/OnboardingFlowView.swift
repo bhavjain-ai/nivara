@@ -5,15 +5,17 @@ import SwiftUI
 /// NivaraPatientApp in place of RootView until `OnboardingStore.isComplete`.
 struct OnboardingFlowView: View {
     @EnvironmentObject private var onboarding: OnboardingStore
-    @State private var step: Step = .welcome
+    @State private var step: Step = .language
 
     private enum Step {
-        case welcome, basicInfo, consent, deviceSetup, complete
+        case language, welcome, basicInfo, consent, deviceSetup, complete
     }
 
     var body: some View {
         Group {
             switch step {
+            case .language:
+                OnboardingLanguageView(onContinue: { step = .welcome })
             case .welcome:
                 OnboardingWelcomeView(onContinue: { step = .basicInfo })
             case .basicInfo:

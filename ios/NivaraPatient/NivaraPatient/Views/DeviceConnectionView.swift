@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DeviceConnectionView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     private var ble: BLEManager { viewModel.bleManager }
 
@@ -14,18 +15,18 @@ struct DeviceConnectionView: View {
             switch ble.state {
             case .poweredOff:
                 Section {
-                    Label("Turn on Bluetooth in Settings to connect a device.", systemImage: "exclamationmark.triangle")
+                    Label(onboarding.t("device_bluetooth_off"), systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.secondary)
                 }
             case .unauthorized:
                 Section {
-                    Label("Nivara needs Bluetooth permission — enable it in Settings > Nivara.", systemImage: "lock")
+                    Label(onboarding.t("device_bluetooth_unauthorized"), systemImage: "lock")
                         .foregroundStyle(.secondary)
                 }
             default:
                 Section {
                     if ble.discoveredDevices.isEmpty {
-                        Text(ble.state == .scanning ? "Searching nearby…" : "No devices found yet. Make sure your meter or cuff is powered on and nearby, then tap Scan.")
+                        Text(ble.state == .scanning ? onboarding.t("device_searching_nearby") : onboarding.t("device_no_devices_found"))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -33,9 +34,9 @@ struct DeviceConnectionView: View {
                         deviceRow(device)
                     }
                 } header: {
-                    Text("Nearby Devices")
+                    Text(onboarding.t("device_nearby_devices"))
                 } footer: {
-                    Text("Works with any BLE device that supports the standard Bluetooth Glucose Profile or Blood Pressure Profile — including Accu-Chek Instant meters and most BLE home BP cuffs. No manufacturer app required. Omron BP cuffs are also supported experimentally via a reverse-engineered protocol — the record format is a best guess for some models and may not decode correctly.")
+                    Text(onboarding.t("device_footer_explanation"))
                 }
 
                 Section {
@@ -44,7 +45,7 @@ struct DeviceConnectionView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Text(ble.state == .scanning ? "Stop Scanning" : "Scan for Devices")
+                            Text(ble.state == .scanning ? onboarding.t("device_stop_scanning") : onboarding.t("device_scan_for_devices"))
                                 .fontWeight(.semibold)
                             Spacer()
                         }
@@ -59,7 +60,7 @@ struct DeviceConnectionView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Text("Disconnect")
+                            Text(onboarding.t("device_disconnect"))
                             Spacer()
                         }
                     }
@@ -68,7 +69,7 @@ struct DeviceConnectionView: View {
         }
         .scrollContentBackground(.hidden)
         .background(NivaraColor.cream)
-        .navigationTitle("Devices")
+        .navigationTitle(onboarding.t("device_nav_title"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -76,16 +77,16 @@ struct DeviceConnectionView: View {
     private var statusRow: some View {
         switch ble.state {
         case .idle:
-            Label("Ready to scan", systemImage: "antenna.radiowaves.left.and.right")
+            Label(onboarding.t("device_ready_to_scan"), systemImage: "antenna.radiowaves.left.and.right")
         case .scanning:
             HStack {
                 ProgressView().controlSize(.small)
-                Text("Scanning…")
+                Text(onboarding.t("device_scanning"))
             }
         case .connecting(let name):
             HStack {
                 ProgressView().controlSize(.small)
-                Text("Connecting to \(name)…")
+                Text(onboarding.t("device_connecting_to", name))
             }
         case .readingOmronHistory(let message):
             HStack(alignment: .top) {
@@ -94,7 +95,7 @@ struct DeviceConnectionView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .connected(let name):
-            Label("Connected to \(name)", systemImage: "checkmark.circle.fill")
+            Label(onboarding.t("device_connected_to", name), systemImage: "checkmark.circle.fill")
                 .foregroundStyle(NivaraColor.normal)
         case .failed(let message):
             Label(message, systemImage: "xmark.circle.fill")
@@ -120,7 +121,7 @@ struct DeviceConnectionView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text("\(device.rssi) dBm")
+                Text(onboarding.t("device_rssi", device.rssi))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -137,16 +138,18 @@ struct DeviceConnectionView: View {
 
     private func kindLabel(_ kind: BLEManager.DiscoveredDevice.Kind) -> String {
         switch kind {
-        case .glucose: return "Glucose meter"
-        case .bloodPressure: return "Blood pressure cuff"
-        case .omronBloodPressure: return "Blood pressure cuff (Omron, experimental)"
-        case .unknown: return "Unknown device type"
+        case .glucose: return onboarding.t("device_kind_glucose")
+        case .bloodPressure: return onboarding.t("device_kind_bp")
+        case .omronBloodPressure: return onboarding.t("device_kind_bp_omron")
+        case .unknown: return onboarding.t("device_kind_unknown")
         }
     }
 }
 
 #Preview {
     NavigationStack {
-        DeviceConnectionView().environmentObject(PatientViewModel())
+        DeviceConnectionView()
+            .environmentObject(PatientViewModel())
+            .environmentObject(OnboardingStore())
     }
 }

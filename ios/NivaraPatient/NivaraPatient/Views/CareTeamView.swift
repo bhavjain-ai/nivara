@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CareTeamView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
     @State private var selectedMember: CareTeamMember?
 
     private var profile: PatientProfile { viewModel.profile }
@@ -24,7 +25,7 @@ struct CareTeamView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    PageTitle(text: "Care Team")
+                    PageTitle(text: onboarding.t("careteam_page_title"))
                         .padding(.top, 8)
                     coachingProgressCard
                     teamCard
@@ -56,7 +57,7 @@ struct CareTeamView: View {
             ProgressView(value: Double(profile.coachingCallsCompleted), total: Double(profile.coachingCallsTarget))
                 .tint(NivaraColor.forestGreen)
 
-            Text("\(profile.coachingCallsCompleted) of \(profile.coachingCallsTarget) check-in calls completed this program")
+            Text(onboarding.t("careteam_calls_completed", profile.coachingCallsCompleted, profile.coachingCallsTarget))
                 .font(.caption)
                 .foregroundStyle(NivaraColor.textSecondary)
         }
@@ -65,7 +66,7 @@ struct CareTeamView: View {
 
     private var teamCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("YOUR CARE TEAM")
+            Text(onboarding.t("careteam_your_team"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
 
@@ -103,7 +104,7 @@ struct CareTeamView: View {
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
 
-                Text(member.lastContact?.summary ?? "No messages yet")
+                Text(member.lastContact?.summary ?? onboarding.t("careteam_no_messages_yet"))
                     .font(.caption2)
                     .foregroundStyle(NivaraColor.textSecondary)
                     .lineLimit(2)
@@ -120,7 +121,7 @@ struct CareTeamView: View {
         } label: {
             HStack {
                 Image(systemName: "questionmark.circle.fill")
-                Text("Got a Question? Contact Us")
+                Text(onboarding.t("careteam_contact_us"))
                     .fontWeight(.semibold)
             }
             .frame(maxWidth: .infinity)
@@ -134,12 +135,12 @@ struct CareTeamView: View {
 
     private var goalsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("YOUR GOALS")
+            Text(onboarding.t("careteam_your_goals"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
 
             if profile.smartGoals.isEmpty {
-                Text("No goals set yet.")
+                Text(onboarding.t("careteam_no_goals_yet"))
                     .font(.footnote)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -172,5 +173,7 @@ struct CareTeamView: View {
 }
 
 #Preview {
-    CareTeamView().environmentObject(PatientViewModel())
+    CareTeamView()
+        .environmentObject(PatientViewModel())
+        .environmentObject(OnboardingStore())
 }

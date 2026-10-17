@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GlucoseHistoryListView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     var body: some View {
         List {
@@ -11,7 +12,7 @@ struct GlucoseHistoryListView: View {
                         .font(.subheadline)
                         .foregroundStyle(NivaraColor.textSecondary)
                     Spacer()
-                    Text("\(reading.glucoseMgDl) mg/dL")
+                    Text(onboarding.t("health_glucose_value", reading.glucoseMgDl))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
                     PillLabel(text: reading.sampleType.displayName)
@@ -21,13 +22,15 @@ struct GlucoseHistoryListView: View {
         }
         .scrollContentBackground(.hidden)
         .background(NivaraColor.cream)
-        .navigationTitle("Blood Glucose")
+        .navigationTitle(onboarding.t("health_blood_glucose"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
 
 #Preview {
     NavigationStack {
-        GlucoseHistoryListView().environmentObject(PatientViewModel())
+        GlucoseHistoryListView()
+            .environmentObject(PatientViewModel())
+            .environmentObject(OnboardingStore())
     }
 }

@@ -7,6 +7,7 @@ import SwiftUI
 /// front means the target range it's judged against is right the first time.
 struct MealTimingConfirmationView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
     let reading: GlucoseReading
 
     var body: some View {
@@ -21,14 +22,14 @@ struct MealTimingConfirmationView: View {
                     Text("\(reading.glucoseMgDl)")
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .foregroundStyle(NivaraColor.textPrimary)
-                    Text("mg/dL")
+                    Text(onboarding.t("health_unit_mgdl"))
                         .font(.subheadline)
                         .foregroundStyle(NivaraColor.textSecondary)
                 }
-                Text("How long since you last ate?")
+                Text(onboarding.t("mealtiming_question"))
                     .font(.headline)
                     .foregroundStyle(NivaraColor.textPrimary)
-                Text("This helps us judge whether this reading is in your target range.")
+                Text(onboarding.t("mealtiming_explanation"))
                     .font(.caption)
                     .foregroundStyle(NivaraColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -37,13 +38,13 @@ struct MealTimingConfirmationView: View {
 
             VStack(spacing: 10) {
                 timingButton(
-                    title: "More than 2 hours",
-                    subtitle: "Fasting or between meals",
+                    title: onboarding.t("mealtiming_more_than_2h"),
+                    subtitle: onboarding.t("mealtiming_fasting_subtitle"),
                     sampleType: .fasting
                 )
                 timingButton(
-                    title: "Less than 2 hours",
-                    subtitle: "Just after a meal",
+                    title: onboarding.t("mealtiming_less_than_2h"),
+                    subtitle: onboarding.t("mealtiming_postmeal_subtitle"),
                     sampleType: .postMeal
                 )
             }
@@ -52,7 +53,7 @@ struct MealTimingConfirmationView: View {
             Button {
                 viewModel.dismissMealTimingConfirmation()
             } label: {
-                Text("Skip for now")
+                Text(onboarding.t("mealtiming_skip"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -92,4 +93,5 @@ struct MealTimingConfirmationView: View {
         reading: GlucoseReading(date: Date(), glucoseMgDl: 128, sampleType: .fasting, source: .demo)
     )
     .environmentObject(PatientViewModel())
+    .environmentObject(OnboardingStore())
 }

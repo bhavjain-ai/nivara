@@ -7,6 +7,7 @@ import UIKit
 /// connected once the patient reaches the main app.
 struct OnboardingDeviceSetupView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
     let onBack: () -> Void
     let onFinished: () -> Void
 
@@ -44,7 +45,7 @@ struct OnboardingDeviceSetupView: View {
                 }
                 .buttonStyle(.plain)
                 Spacer()
-                Text("Device Setup · \(deviceStep) of \(totalDeviceSteps)")
+                Text(onboarding.t("devicesetup_step_of", deviceStep, totalDeviceSteps))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -68,11 +69,11 @@ struct OnboardingDeviceSetupView: View {
 
     private func title(for step: Int) -> String {
         switch step {
-        case 1: return "Gather your supplies"
-        case 2: return "Turn on Bluetooth"
-        case 3: return "Connect your glucometer"
-        case 4: return "Confirm the connection"
-        default: return "Take your first measurement"
+        case 1: return onboarding.t("devicesetup_title_supplies")
+        case 2: return onboarding.t("devicesetup_title_bluetooth")
+        case 3: return onboarding.t("devicesetup_title_connect")
+        case 4: return onboarding.t("devicesetup_title_confirm")
+        default: return onboarding.t("devicesetup_title_measurement")
         }
     }
 
@@ -91,12 +92,12 @@ struct OnboardingDeviceSetupView: View {
 
     private var suppliesStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Before you start, get these ready:")
+            Text(onboarding.t("devicesetup_supplies_intro"))
                 .font(.subheadline)
                 .foregroundStyle(NivaraColor.textSecondary)
-            supplyRow(icon: "drop.fill", text: "Your Accu-Chek Instant glucometer")
-            supplyRow(icon: "rectangle.on.rectangle", text: "A test strip")
-            supplyRow(icon: "bandage.fill", text: "A lancet device")
+            supplyRow(icon: "drop.fill", text: onboarding.t("devicesetup_supply_meter"))
+            supplyRow(icon: "rectangle.on.rectangle", text: onboarding.t("devicesetup_supply_strip"))
+            supplyRow(icon: "bandage.fill", text: onboarding.t("devicesetup_supply_lancet"))
         }
     }
 
@@ -128,14 +129,14 @@ struct OnboardingDeviceSetupView: View {
 
     private var bluetoothStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Open Settings, tap Bluetooth, and make sure the switch is turned on.")
+            Text(onboarding.t("devicesetup_bluetooth_instruction"))
                 .font(.subheadline)
                 .foregroundStyle(NivaraColor.textSecondary)
 
             HStack(spacing: 10) {
                 Image(systemName: bluetoothIsOn ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                     .foregroundStyle(bluetoothIsOn ? NivaraColor.forestGreen : NivaraColor.warning)
-                Text(bluetoothIsOn ? "Bluetooth is on" : "Bluetooth looks like it's off")
+                Text(bluetoothIsOn ? onboarding.t("devicesetup_bluetooth_on") : onboarding.t("devicesetup_bluetooth_off"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NivaraColor.textPrimary)
             }
@@ -149,7 +150,7 @@ struct OnboardingDeviceSetupView: View {
                         UIApplication.shared.open(url)
                     }
                 } label: {
-                    Text("Open Settings")
+                    Text(onboarding.t("devicesetup_open_settings"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(NivaraColor.forestGreen)
                 }
@@ -163,10 +164,10 @@ struct OnboardingDeviceSetupView: View {
     private var connectStep: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Turn on your Accu-Chek Instant meter.")
+                Text(onboarding.t("devicesetup_turn_on_meter"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NivaraColor.textPrimary)
-                Text("Press and hold the meter's Bluetooth button until the Bluetooth symbol blinks — that means it's ready to pair. Then tap Scan below and select your meter when it appears.")
+                Text(onboarding.t("devicesetup_pairing_instruction"))
                     .font(.subheadline)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -177,7 +178,7 @@ struct OnboardingDeviceSetupView: View {
             Button {
                 ble.state == .scanning ? ble.stopScanning() : ble.startScanning()
             } label: {
-                Text(ble.state == .scanning ? "Stop Scanning" : "Scan for My Meter")
+                Text(ble.state == .scanning ? onboarding.t("device_stop_scanning") : onboarding.t("devicesetup_scan_for_meter"))
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -188,7 +189,7 @@ struct OnboardingDeviceSetupView: View {
             .buttonStyle(.plain)
 
             if ble.discoveredDevices.isEmpty {
-                Text(ble.state == .scanning ? "Searching nearby…" : "No devices found yet.")
+                Text(ble.state == .scanning ? onboarding.t("device_searching_nearby") : onboarding.t("devicesetup_no_devices_short"))
                     .font(.caption)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -203,7 +204,7 @@ struct OnboardingDeviceSetupView: View {
                         Text(device.name)
                             .foregroundStyle(NivaraColor.textPrimary)
                         Spacer()
-                        Text("\(device.rssi) dBm")
+                        Text(onboarding.t("device_rssi", device.rssi))
                             .font(.caption2)
                             .foregroundStyle(NivaraColor.textSecondary)
                     }
@@ -226,15 +227,15 @@ struct OnboardingDeviceSetupView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 44))
                     .foregroundStyle(NivaraColor.forestGreen)
-                Text("Connected to \(name)")
+                Text(onboarding.t("device_connected_to", name))
                     .font(.headline)
                     .foregroundStyle(NivaraColor.textPrimary)
             } else {
                 ProgressView()
-                Text("Connecting…")
+                Text(onboarding.t("devicesetup_connecting"))
                     .font(.subheadline)
                     .foregroundStyle(NivaraColor.textSecondary)
-                Button("Back to device list") { deviceStep = 3 }
+                Button(onboarding.t("devicesetup_back_to_list")) { deviceStep = 3 }
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NivaraColor.forestGreen)
             }
@@ -247,7 +248,7 @@ struct OnboardingDeviceSetupView: View {
 
     private var measurementStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Insert a test strip and apply your blood sample as you normally would. We'll pick up the result automatically — no need to do anything else in the app.")
+            Text(onboarding.t("devicesetup_insert_strip"))
                 .font(.subheadline)
                 .foregroundStyle(NivaraColor.textSecondary)
 
@@ -255,7 +256,7 @@ struct OnboardingDeviceSetupView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(NivaraColor.forestGreen)
-                    Text("Reading received — \(reading.glucoseMgDl) mg/dL")
+                    Text(onboarding.t("devicesetup_reading_received", reading.glucoseMgDl))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(NivaraColor.textPrimary)
                 }
@@ -265,7 +266,7 @@ struct OnboardingDeviceSetupView: View {
             } else {
                 HStack(spacing: 10) {
                     ProgressView()
-                    Text("Waiting for your reading…")
+                    Text(onboarding.t("devicesetup_waiting_reading"))
                         .font(.subheadline)
                         .foregroundStyle(NivaraColor.textSecondary)
                 }
@@ -279,7 +280,7 @@ struct OnboardingDeviceSetupView: View {
     }
 
     private var skipLink: some View {
-        Button("Skip for now — I'll finish this later") {
+        Button(onboarding.t("devicesetup_skip")) {
             onFinished()
         }
         .font(.caption)
@@ -294,16 +295,16 @@ struct OnboardingDeviceSetupView: View {
     private var footer: some View {
         switch deviceStep {
         case 1:
-            OnboardingPrimaryButton(title: "Next") { deviceStep = 2 }
+            OnboardingPrimaryButton(title: onboarding.t("common_next")) { deviceStep = 2 }
         case 2:
-            OnboardingPrimaryButton(title: "Next") { deviceStep = 3 }
+            OnboardingPrimaryButton(title: onboarding.t("common_next")) { deviceStep = 3 }
         case 3:
             EmptyView()
         case 4:
-            OnboardingPrimaryButton(title: "Next", enabled: ble.connectedDeviceName != nil) { deviceStep = 5 }
+            OnboardingPrimaryButton(title: onboarding.t("common_next"), enabled: ble.connectedDeviceName != nil) { deviceStep = 5 }
         default:
             OnboardingPrimaryButton(
-                title: viewModel.pendingMealTimingConfirmation != nil ? "Continue" : "Continue Anyway",
+                title: viewModel.pendingMealTimingConfirmation != nil ? onboarding.t("common_continue") : onboarding.t("devicesetup_continue_anyway"),
                 action: onFinished
             )
         }
@@ -313,4 +314,5 @@ struct OnboardingDeviceSetupView: View {
 #Preview {
     OnboardingDeviceSetupView(onBack: {}, onFinished: {})
         .environmentObject(PatientViewModel())
+        .environmentObject(OnboardingStore())
 }

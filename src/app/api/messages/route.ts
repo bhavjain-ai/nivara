@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getCurrentStaff } from '@/lib/current-staff';
+import { verifyClinicAccess } from '@/lib/verify-clinic-access';
 
 const VALID_ROLES = ['Physician', 'Dietician', 'Coach'] as const;
 
@@ -51,14 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `coordinator_role must be one of ${VALID_ROLES.join(', ')}` }, { status: 422 });
     }
 
-    // RLS-scoped lookup, not supabaseAdmin: returns no row if this patient
-    // isn't in the logged-in staff member's clinic, which is exactly the
-    // access check we want — see supabase/migrations/0003_clinics_and_staff.sql.
-    const sessionClient = createSupabaseServerClient();
-    const { data: patientRow } = sessionClient
-      ? await sessionClient.from('patients').select('id').eq('id', patient_id).maybeSingle()
-      : { data: null };
-    if (!patientRow) {
+    if (!(await verifyClinicAccess(patient_id))) {
       return NextResponse.json({ error: 'Patient not found or not accessible.' }, { status: 404 });
     }
 

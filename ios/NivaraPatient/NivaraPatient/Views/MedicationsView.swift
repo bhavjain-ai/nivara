@@ -7,6 +7,7 @@ import SwiftUI
 /// patients can see what's different without hunting for it.
 struct MedicationsView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     private var profile: PatientProfile { viewModel.profile }
 
@@ -25,7 +26,7 @@ struct MedicationsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    PageTitle(text: "Medications")
+                    PageTitle(text: onboarding.t("medications_page_title"))
                         .padding(.top, 8)
                     currentMedicationsCard
                     recentChangesCard
@@ -46,12 +47,12 @@ struct MedicationsView: View {
 
     private var currentMedicationsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("YOUR MEDICATIONS")
+            Text(onboarding.t("medications_your_medications"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
 
             if currentMedications.isEmpty {
-                Text("No medications on file yet.")
+                Text(onboarding.t("medications_none_on_file"))
                     .font(.subheadline)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -73,7 +74,7 @@ struct MedicationsView: View {
                 Divider()
             }
 
-            Text("Prescribed by \(profile.physicianName)")
+            Text(onboarding.t("medications_prescribed_by", profile.physicianName))
                 .font(.caption2)
                 .foregroundStyle(NivaraColor.textSecondary)
         }
@@ -82,12 +83,12 @@ struct MedicationsView: View {
 
     private var recentChangesCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("RECENT CHANGES")
+            Text(onboarding.t("medications_recent_changes"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NivaraColor.textSecondary)
 
             if recentChanges.isEmpty {
-                Text("No changes logged yet.")
+                Text(onboarding.t("medications_no_changes_logged"))
                     .font(.subheadline)
                     .foregroundStyle(NivaraColor.textSecondary)
             }
@@ -109,5 +110,7 @@ struct MedicationsView: View {
 }
 
 #Preview {
-    MedicationsView().environmentObject(PatientViewModel())
+    MedicationsView()
+        .environmentObject(PatientViewModel())
+        .environmentObject(OnboardingStore())
 }

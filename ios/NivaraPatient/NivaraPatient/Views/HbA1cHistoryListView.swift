@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HbA1cHistoryListView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     var body: some View {
         List {
@@ -20,13 +21,15 @@ struct HbA1cHistoryListView: View {
         }
         .scrollContentBackground(.hidden)
         .background(NivaraColor.cream)
-        .navigationTitle("HbA1c")
+        .navigationTitle(onboarding.t("health_hba1c"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
 
 #Preview {
     NavigationStack {
-        HbA1cHistoryListView().environmentObject(PatientViewModel())
+        HbA1cHistoryListView()
+            .environmentObject(PatientViewModel())
+            .environmentObject(OnboardingStore())
     }
 }

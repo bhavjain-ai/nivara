@@ -20,6 +20,12 @@ struct NivaraPatientApp: App {
             }
             .environmentObject(onboarding)
             .environmentObject(viewModel)
+            // Affects system-drawn chrome (DatePicker, etc.) — the app's own
+            // text is translated separately via OnboardingStore.t(_:),
+            // since relying on this alone would require a full Xcode String
+            // Catalog + compiler to verify correctly, which isn't available
+            // in this environment (see Translations.swift's doc comment).
+            .environment(\.locale, onboarding.selectedLanguage.locale)
         }
     }
 }

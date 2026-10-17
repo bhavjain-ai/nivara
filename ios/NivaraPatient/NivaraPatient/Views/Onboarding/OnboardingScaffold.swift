@@ -5,6 +5,7 @@ import SwiftUI
 /// a primary action button) — keeps every step visually consistent without
 /// each view re-deriving the same layout.
 struct OnboardingScaffold<Content: View, Footer: View>: View {
+    @EnvironmentObject private var onboarding: OnboardingStore
     let title: String
     let subtitle: String?
     let step: Int
@@ -44,7 +45,7 @@ struct OnboardingScaffold<Content: View, Footer: View>: View {
                         .buttonStyle(.plain)
                     }
                     Spacer()
-                    Text("\(step) of \(totalSteps)")
+                    Text(onboarding.t("onboarding_step_of", step, totalSteps))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NivaraColor.textSecondary)
                 }

@@ -30,22 +30,22 @@ struct OnboardingBasicInfoView: View {
 
     var body: some View {
         OnboardingScaffold(
-            title: "Tell us about you",
-            subtitle: "Enter your information just as it appears on your health insurance card or ID.",
+            title: onboarding.t("basicinfo_title"),
+            subtitle: onboarding.t("basicinfo_subtitle"),
             step: 1,
             totalSteps: 3,
             onBack: onBack
         ) {
             VStack(alignment: .leading, spacing: 20) {
-                labeledField("First name") {
-                    TextField("First name", text: $onboarding.firstName)
+                labeledField(onboarding.t("basicinfo_first_name")) {
+                    TextField(onboarding.t("basicinfo_first_name"), text: $onboarding.firstName)
                         .textInputAutocapitalization(.words)
                 }
-                labeledField("Last name") {
-                    TextField("Last name", text: $onboarding.lastName)
+                labeledField(onboarding.t("basicinfo_last_name")) {
+                    TextField(onboarding.t("basicinfo_last_name"), text: $onboarding.lastName)
                         .textInputAutocapitalization(.words)
                 }
-                labeledField("Date of birth") {
+                labeledField(onboarding.t("basicinfo_date_of_birth")) {
                     DatePicker(
                         "",
                         selection: Binding(
@@ -59,15 +59,15 @@ struct OnboardingBasicInfoView: View {
                     .labelsHidden()
                 }
                 if !clinics.isEmpty {
-                    labeledField("Clinic") {
+                    labeledField(onboarding.t("basicinfo_clinic")) {
                         Picker(
-                            "Clinic",
+                            onboarding.t("basicinfo_clinic"),
                             selection: Binding(
                                 get: { onboarding.selectedClinicId },
                                 set: { onboarding.selectedClinicId = $0 }
                             )
                         ) {
-                            Text("Select a clinic").tag(UUID?.none)
+                            Text(onboarding.t("basicinfo_select_clinic")).tag(UUID?.none)
                             ForEach(clinics) { clinic in
                                 Text(clinic.name).tag(Optional(clinic.id))
                             }
@@ -77,7 +77,7 @@ struct OnboardingBasicInfoView: View {
                 }
             }
         } footer: {
-            OnboardingPrimaryButton(title: "Next", enabled: canContinue, action: onNext)
+            OnboardingPrimaryButton(title: onboarding.t("common_next"), enabled: canContinue, action: onNext)
         }
         .task {
             clinics = await SupabaseService.fetchClinics()

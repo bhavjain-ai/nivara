@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getCurrentStaff } from '@/lib/current-staff';
 import { conditionForDrugClass } from '@/lib/medication-classify';
+import { verifyClinicAccess } from '@/lib/verify-clinic-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,11 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
-    const sessionClient = createSupabaseServerClient();
-    const { data: patientRow } = sessionClient
-      ? await sessionClient.from('patients').select('id').eq('id', patientId).maybeSingle()
-      : { data: null };
-    if (!patientRow) {
+    if (!(await verifyClinicAccess(patientId))) {
       return NextResponse.json({ error: 'Patient not found or not accessible.' }, { status: 404 });
     }
 

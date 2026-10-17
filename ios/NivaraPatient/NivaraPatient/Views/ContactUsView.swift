@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContactUsView: View {
     @EnvironmentObject private var viewModel: PatientViewModel
+    @EnvironmentObject private var onboarding: OnboardingStore
 
     private var profile: PatientProfile { viewModel.profile }
 
@@ -17,21 +18,21 @@ struct ContactUsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    PageTitle(text: "Contact Us")
+                    PageTitle(text: onboarding.t("contact_page_title"))
                         .padding(.top, 8)
 
                     contactCard(
                         icon: "stethoscope",
-                        title: "Your Physician",
+                        title: onboarding.t("contact_your_physician"),
                         name: profile.physicianName,
-                        subtitle: "Primary care physician",
+                        subtitle: onboarding.t("contact_primary_care_physician"),
                         phone: profile.physicianPhone
                     )
 
                     if let coordinator = mostRecentCoordinator {
                         contactCard(
                             icon: "heart.text.square.fill",
-                            title: "Your Care Coordinator",
+                            title: onboarding.t("contact_your_care_coordinator"),
                             name: coordinator.coordinatorName,
                             subtitle: coordinator.coordinatorRole.displayName(for: onboarding.selectedLanguage),
                             phone: nil
@@ -40,9 +41,9 @@ struct ContactUsView: View {
 
                     contactCard(
                         icon: "questionmark.circle.fill",
-                        title: "Nivara Support",
-                        name: "Nivara Health Support Team",
-                        subtitle: "Mon–Sat, 9am–7pm IST",
+                        title: onboarding.t("contact_nivara_support"),
+                        name: onboarding.t("contact_support_team_name"),
+                        subtitle: onboarding.t("contact_support_hours"),
                         phone: "+91-80000-00000",
                         email: "support@nivarahealth.com",
                         whatsapp: "+91-80000-00000"
@@ -76,12 +77,12 @@ struct ContactUsView: View {
             HStack(spacing: 10) {
                 if let phone, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
                     Link(destination: url) {
-                        contactButton(icon: "phone.fill", label: "Call")
+                        contactButton(icon: "phone.fill", label: onboarding.t("contact_call"))
                     }
                 }
                 if let email, let url = URL(string: "mailto:\(email)") {
                     Link(destination: url) {
-                        contactButton(icon: "envelope.fill", label: "Email")
+                        contactButton(icon: "envelope.fill", label: onboarding.t("contact_email"))
                     }
                 }
                 // wa.me deep links into the WhatsApp app if installed, or a
@@ -91,7 +92,7 @@ struct ContactUsView: View {
                 // Phone/Mail apps above.
                 if let whatsapp, let url = URL(string: "https://wa.me/\(whatsapp.filter { $0.isNumber })") {
                     Link(destination: url) {
-                        contactButton(icon: "message.fill", label: "WhatsApp")
+                        contactButton(icon: "message.fill", label: onboarding.t("contact_whatsapp"))
                     }
                 }
             }
@@ -120,13 +121,13 @@ struct ContactUsView: View {
     /// self-contained demo build; it's shown here so it's inspectable.
     private var deviceInfoCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("About This Device", systemImage: "iphone")
+            Label(onboarding.t("contact_about_device"), systemImage: "iphone")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(NivaraColor.forestGreen)
-            Text("Device ID: \(String(DeviceIdentity.current.prefix(8)))…")
+            Text(onboarding.t("contact_device_id", String(DeviceIdentity.current.prefix(8))))
                 .font(.caption)
                 .foregroundStyle(NivaraColor.textSecondary)
-            Text("If you contact support, they may ask for this ID to help locate your account.")
+            Text(onboarding.t("contact_device_id_explanation"))
                 .font(.caption2)
                 .foregroundStyle(NivaraColor.textSecondary)
         }
@@ -137,7 +138,7 @@ struct ContactUsView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(NivaraColor.critical)
-            Text("If this is a medical emergency, call your local emergency number immediately — don't wait for a response here.")
+            Text(onboarding.t("contact_emergency_notice"))
                 .font(.caption)
                 .foregroundStyle(NivaraColor.textPrimary)
         }
@@ -149,5 +150,7 @@ struct ContactUsView: View {
 }
 
 #Preview {
-    ContactUsView().environmentObject(PatientViewModel())
+    ContactUsView()
+        .environmentObject(PatientViewModel())
+        .environmentObject(OnboardingStore())
 }
